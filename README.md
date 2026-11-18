@@ -9,6 +9,8 @@ fragmentos de red que se unen y brechas de conexión.
 | Archivo | Qué es |
 |---|---|
 | `index.html` | El visor. Se abre con doble clic o se publica en GitHub Pages. |
+| `editor.js` | Herramientas de edición de capas (sólo se activan con `servidor.py`). |
+| `servidor.py` | Servidor local que usa `abrir_visor.bat`: sirve el visor y guarda las ediciones. |
 | `config.js` | Configuración pública (mapa base inicial, Google). Se publica. |
 | `config.local.js` | Claves privadas (token de Mapbox). Sólo local: está en `.gitignore` y no se sube. |
 | `data/datos.js` | Datos del análisis de red (lo genera el script; no editar a mano). |
@@ -17,7 +19,7 @@ fragmentos de red que se unen y brechas de conexión.
 
 ## Actualizar los datos
 
-1. Reemplazar el GeoJSON en `C:\Plan_Maestro\Geolibre\` (o cambiar la ruta en la
+1. Reemplazar el GeoJSON en `C:\Plan_Maestro\Visor_capas\` (o cambiar la ruta en la
    sección CONFIGURACIÓN del script).
 2. Ejecutar en PowerShell:
 
@@ -35,6 +37,24 @@ Campos requeridos en la capa de sistemas: `Sistema`, `tipo`, `name`.
 Las categorías se colorean según el texto de `tipo` ("Plan Maestro", "Extra",
 "Existente", "Alternativa", "Planificado"); los tramos cuyo tipo contiene
 "Alternativa" se muestran sólo con el trazado "Con alternativas".
+
+## Editar sistemas y ciclovías existentes desde el visor
+
+1. Abrir el visor con `abrir_visor.bat` (no con doble clic en `index.html`). Si ya hay otra ventana
+   negra del visor abierta, cerrarla antes.
+2. Botón del lápiz (arriba a la izquierda) → elegir **Sistemas** o **Ciclovías existentes**.
+3. Herramientas: seleccionar (clic; Mayús + clic para varios), **Vértices** (arrastrar para mover,
+   arrastrar un punto medio naranjo para agregar, Supr para borrar), **Nuevo tramo** (doble clic o Enter
+   para terminar), **Cortar** (clic sobre un tramo lo divide en dos; ambas partes conservan los atributos
+   y su largo se recalcula), **Borrar**, **Deshacer** (Ctrl+Z). Para borrar un tramo intermedio de una
+   ciclovía: cortar en sus dos extremos, «Seleccionar», clic en la parte del medio y «Borrar». El dibujo se ajusta a vértices y bordes cercanos de
+   ambas capas (mantener Alt para no ajustar). Los atributos se editan en el formulario del panel.
+4. **Guardar** escribe el GeoJSON de `Visor_capas` (deja una copia del archivo anterior en
+   `Visor_capas\respaldos`) y vuelve a ejecutar el análisis de red; el visor se recarga con los datos nuevos.
+
+En la capa de sistemas, `Sistema` y `tipo` son obligatorios. El campo `km` de los sistemas se recalcula
+cuando cambia la geometría; el `KM` de las existentes (dato de catastro) sólo se completa en tramos nuevos.
+La edición sólo existe con el servidor local (`servidor.py`); la versión publicada en GitHub Pages no la muestra.
 
 ## Publicar en GitHub Pages (sin instalar nada)
 

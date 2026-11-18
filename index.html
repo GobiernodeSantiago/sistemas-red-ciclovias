@@ -6,8 +6,8 @@
 <title>Red Ciclovías por Sistema</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202610051435"></script>
-<script src="data/capas.js?v=202610051435"></script>
+<script src="data/datos.js?v=202611181434"></script>
+<script src="data/capas.js?v=202611181434"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -51,6 +51,7 @@
   #panelDer .subley { display: none; flex-direction: column; gap: 1px; padding: 0 0 4px 22px; }
   #panelDer .subley.on { display: flex; }
   #panelDer .subley span { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-2); }
+  #leyenda.apagada { opacity: .45; }
   #panelDer .notaCapa { font-size: 11px; color: var(--muted); padding: 0 0 4px 22px; }
   .ctl-base { position: relative; z-index: 3; }
   .ctl-base > button { display: grid; place-items: center; width: 34px !important; height: 34px !important; }
@@ -269,6 +270,7 @@
   <aside id="panelDer">
     <div class="cab"><h2>Categorías del sistema</h2>
       <button id="ocultarDer" title="Ocultar panel de capas y leyenda">Ocultar ›</button></div>
+    <label><input type="checkbox" id="cSis" checked> Capa de sistemas</label>
     <div id="leyenda"></div>
     <h2>Capas</h2>
     <div id="capas"></div>
@@ -400,6 +402,12 @@ const MORADO_GORE = "#5e3c6e";   // color común de los Ejes GORE (ciruela oscur
 const AZUL_EXISTENTES = "#5598e7", AZUL_EXISTENTES_OSCURO = "#86b6ef";   // red existente (línea fina) en mapas claros / oscuros
 // Cada capa: fuente (id en capas.js), grupo del panel, tipo (line|circle|square), color (fijo o por categoría), popup
 const CAPAS_REF = [
+  { id: "osm", fuente: "osm", grupo: "Análisis de red", nombre: "Ciclovías existentes (OSM)",
+    color: "#12a4a0", ancho: 2,
+    popup: p => [p.name || "Ciclovía (OSM)", [["Capa", "Ciclovías existentes (OpenStreetMap)"], ["Tipo", p.tipo_infra],
+      ["Vía", p["vía"]], ["Superficie", p.superficie], ["Sentido", p.sentido], ["Iluminada", p.iluminada],
+      ["Ancho", p.width ? p.width + " m" : null], ["Largo", km2(p.km_geom)],
+      ["ID OSM", p.osm_id]]] },
   { id: "pmc-metro", fuente: "pmc_metro", grupo: "Plan Maestro de Ciclovías", nombre: "PMC Metropolitanos",
     color: "#9a3a0c", ancho: 3.5,
     resaltar: "cod",   // al hacer clic se destaca el eje completo (mismo código)
@@ -528,8 +536,9 @@ document.getElementById("capas").innerHTML = grupoHTML("Análisis de red", `
   <label><input type="checkbox" id="cBase">${muestra(AZUL_EXISTENTES, 1.2)} Ciclovías existentes
     <small>${fmt(D.red_existente.km, 0)} km</small></label>
   <label><input type="checkbox" id="cOtros">${muestra("#b5b4ae", 2.5)} Otros sistemas (tenue)</label>
-  <label><input type="checkbox" id="cBrechas">${muestra("#0b0b0b", 2, [1, 1.5])} Brechas de conexión</label>`) +
-  [...new Set(CAPAS_REF.map(c => c.grupo))].map(g => grupoHTML(g,
+  <label><input type="checkbox" id="cBrechas">${muestra("#0b0b0b", 2, [1, 1.5])} Brechas de conexión</label>
+  ${CAPAS_REF.filter(c => c.grupo === "Análisis de red").map(itemCapa).join("")}`) +   // capas de referencia de este grupo
+  [...new Set(CAPAS_REF.map(c => c.grupo))].filter(g => g !== "Análisis de red").map(g => grupoHTML(g,
     CAPAS_REF.filter(c => c.grupo === g).map(itemCapa).join(""))).join("");
 // cuántas capas hay encendidas en cada grupo (se ve aunque el grupo esté plegado)
 function contarActivas() {
@@ -571,6 +580,8 @@ function panelDer(mostrar) {
 }
 document.getElementById("ocultarDer").onclick = () => panelDer(false);
 panelDer(window.innerWidth >= 720);   // en pantallas chicas parte oculto
+// encuadre inicial según la capa de sistemas, ya con el tamaño final del mapa (el panel derecho le quita ancho)
+map.fitBounds(bbox(D.geo.sistemas), { padding: 40, animate: false });
 function marcarBase(base) {
   baseActual = base;
   document.querySelectorAll(".base-menu input").forEach(r => r.checked = r.value === base.id);
@@ -743,11 +754,13 @@ map.on("load", () => {
       paint: { "text-color": "#52514e", "text-halo-color": "rgba(255,255,255,.9)", "text-halo-width": 1.6 } });
   }
 
+  const editando = () => window.EDICION && window.EDICION.capa;   // editor.js: durante la edición no hay popups
   for (const id of ["sis-sel", "sis-alt", "sis-pto", "ex-act", "br", "sis-otros", ...CAPAS_CLIC]) {
-    map.on("mouseenter", id, () => map.getCanvas().style.cursor = "pointer");
-    map.on("mouseleave", id, () => map.getCanvas().style.cursor = "");
+    map.on("mouseenter", id, () => { if (!editando()) map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", id, () => { if (!editando()) map.getCanvas().style.cursor = ""; });
   }
   map.on("click", e => {
+    if (editando()) return;
     if (medir.modo) return clicMedir(e);
     if (modoSV) return abrirSV(e.lngLat, rumboCercano(e.point));
     // clic en un círculo agrupado: acercar hasta que se separe
@@ -833,6 +846,15 @@ segmento("modo", "m", m => {
 document.getElementById("umbral").oninput = e => { estado.umbral = +e.target.value; render(false); };
 document.getElementById("cBase").onchange = e => vis("ex-base", e.target.checked);
 document.getElementById("cOtros").onchange = () => render(false);
+// capa de sistemas (los elegidos en el panel izquierdo): mostrar u ocultar; la leyenda se atenúa cuando está oculta
+const CAPAS_SIS = ["sis-casing", "sis-sel", "sis-alt", "sis-pto"];
+const verSistemas = () => {
+  const on = document.getElementById("cSis").checked;
+  CAPAS_SIS.forEach(id => vis(id, on));
+  document.getElementById("leyenda").classList.toggle("apagada", !on);
+};
+document.getElementById("cSis").onchange = verSistemas;
+map.on("load", verSistemas);
 document.getElementById("cBrechas").onchange = e => vis("br", e.target.checked);
 document.getElementById("toggle").onclick = () => {
   const p = document.getElementById("panel"); p.classList.toggle("min");
@@ -1532,5 +1554,7 @@ function bbox(fc) {
   return [[b[0], b[1]], [b[2], b[3]]];
 }
 </script>
+<!-- edición de capas: sólo se activa con el servidor local (abrir_visor.bat -> servidor.py) -->
+<script src="editor.js"></script>
 </body>
 </html>

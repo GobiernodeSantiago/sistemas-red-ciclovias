@@ -29,7 +29,7 @@ from shapely.geometry import Point
 from shapely import shortest_line
 
 # ---------------------------------------------------------------- CONFIGURACIÓN
-ENTRADA = Path(r"C:\Plan_Maestro\Geolibre")
+ENTRADA = Path(r"C:\Plan_Maestro\Visor_capas")
 SISTEMAS = ENTRADA / "sistemas_ciclovias_propuesta.geojson"
 EXISTENTES = ENTRADA / "ciclovias_existentes_jul26.geojson"
 CAMPO_SISTEMA = "Sistema"
@@ -48,6 +48,8 @@ SALIDA_CAPAS = SALIDA.parent / "capas.js"
 # id: nombre interno usado por el visor; campos: atributos que se exportan para los popups;
 # derivar: función opcional que agrega campos calculados (se define más abajo).
 CAPAS_REFERENCIA = [
+    {"id": "osm", "archivo": ENTRADA / "ciclovias_OSM.geojson", "derivar": lambda g: derivar_osm(g),
+     "campos": ["osm_id", "name", "tipo_infra", "vía", "superficie", "sentido", "iluminada", "width"]},
     {"id": "pmc_metro", "archivo": ENTRADA / "PMC_Metropolitanos.geojson",
      "campos": ["nombre", "cod", "km", "tramo_RS", "inicio", "termino", "esttado"]},
     {"id": "pmc_ci", "archivo": ENTRADA / "PMC_Comunales_Intercomunales.geojson",
@@ -289,6 +291,33 @@ def derivar_siniestros(g):
     }
     mapa = {t: grp for grp, ts in grupos.items() for t in ts}
     g["tipo_grupo"] = g["tipo"].str.strip().str.upper().map(mapa).fillna("Otro / sin especificar")
+    return g
+
+
+def derivar_osm(g):
+    """Ciclovías OSM (exportación directa de etiquetas): resume las etiquetas en campos legibles."""
+    g = g[~g["@id"].astype(str).str.startswith("relation/")].copy()   # rutas (relaciones) duplican los tramos
+    col = lambda k: g[k].fillna("").astype(str) if k in g.columns else pd.Series("", index=g.index)
+    hw = col("highway")
+    cw = col("cycleway") + " " + col("cycleway:left") + " " + col("cycleway:right") + " " + \
+        col("cycleway:both") + " " + col("cycleway:lanes")
+    g["tipo_infra"] = np.select(
+        [hw == "construction", hw == "cycleway", cw.str.contains("track"),
+         cw.str.contains(r"(?<!shared_)lane", regex=True), cw.str.contains("shared_lane")],
+        ["En construcción", "Ciclovía exclusiva (vía propia)", "Ciclovía segregada junto a la calzada",
+         "Ciclobanda pintada en la calzada", "Pista compartida con vehículos"], "Calle con ciclovía (sin detalle)")
+    g["vía"] = hw.map({"primary": "Primaria", "primary_link": "Enlace primaria", "secondary": "Secundaria",
+                       "secondary_link": "Enlace secundaria", "tertiary": "Terciaria", "tertiary_link": "Enlace terciaria",
+                       "residential": "Residencial", "unclassified": "Local", "living_street": "Calle de convivencia",
+                       "service": "Servicio", "motorway_link": "Enlace de autopista"})
+    sup = col("cycleway:surface").where(col("cycleway:surface") != "", col("surface"))
+    g["superficie"] = sup.map({"asphalt": "Asfalto", "concrete": "Hormigón", "paved": "Pavimentada",
+                               "paving_stones": "Adoquín", "compacted": "Compactada", "gravel": "Grava",
+                               "fine_gravel": "Maicillo", "ground": "Tierra", "dirt": "Tierra", "unpaved": "Sin pavimentar"})
+    g["sentido"] = np.where(hw != "cycleway", None,
+                            col("oneway").map({"yes": "Un sentido", "no": "Doble sentido"}))
+    g["iluminada"] = col("lit").map({"yes": "Sí", "no": "No"})
+    g["osm_id"] = g["@id"]
     return g
 
 
