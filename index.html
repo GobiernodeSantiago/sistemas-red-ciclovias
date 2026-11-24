@@ -6,8 +6,8 @@
 <title>Análisis de factibilidad de ejes priorizados</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202611241837"></script>
-<script src="data/capas.js?v=202611241837"></script>
+<script src="data/datos.js?v=202611241851"></script>
+<script src="data/capas.js?v=202611241851"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -1177,8 +1177,9 @@ function compararSistemas(tipos, relleno) {
 const DETALLE = [   // cod = subcarpeta de factibilidad_sistemas; sistema = nombre en la capa de sistemas
   { cod: "NS", nombre: "Norte Sur", sistema: "Sistema Norte Sur" },
   { cod: "VM", nombre: "Vicuña Mackenna", sistema: "Sistema Vicuña Mackenna" },
-  // vista combinada (prueba): junta los sistemas de "partes" en un mismo mapa
-  { cod: "NSVM", nombre: "Norte Sur + Vicuña Mackenna", partes: ["NS", "VM"] },
+  { cod: "Bonilla", nombre: "Bonilla", sistema: "Sistema Bonilla" },
+  // vista combinada: junta los sistemas de "partes" en un mismo mapa (cod NSVM se mantiene por los enlaces ya compartidos)
+  { cod: "NSVM", nombre: "Sistemas consolidados", partes: ["NS", "VM", "Bonilla"] },
 ];
 const FACT = [["Existente", "#2a78d6"], ["En diseño", "#b48ee6"], ["Alta", "#0ca30c"], ["Media", "#fab219"], ["Baja", "#d03b3b"], ["Par vial", "#d4148c"]];
 const FACT_OTRO = "#a8a7a0", ROJO_CONF = "#d7191c";
@@ -1388,7 +1389,7 @@ function renderSis(d) {
   const subs = subsDe(d).filter(s => s.tramos.length);
   const kmDe = s => s.tramos.reduce((a, f) => a + (f.properties.km_geom || 0), 0);
   const nOn = subs.length, nTot = d.subs?.length;
-  el.innerHTML = `<h2>${d.partes ? "Sistemas" : "Sistema"} ${esc(d.nombre)}</h2>
+  el.innerHTML = `<h2>${d.partes ? "" : "Sistema "}${esc(d.nombre)}</h2>
     <div class="kpis">
       <div class="kpi wide"><b>${fmt(total)} km</b><span>${d.partes ? (nOn === nTot ? "Sistemas en conjunto" :
         nOn ? "Sólo los sistemas prendidos" : "Ningún sistema prendido") : "Sistema " + esc(d.nombre) + " completo"}

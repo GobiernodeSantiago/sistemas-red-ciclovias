@@ -356,6 +356,11 @@ def derivar_fact_tramos(g):
     eje_carpeta = carpeta.str.split(";").map(lambda xs: xs[-1].strip() if len(xs) > 1 else None)
     g["eje"] = partes[1].where(con_codigo, eje_carpeta)
     g["tramo"] = partes[2].where(con_codigo, nombre)
+    # "<EJE>_<tramo>" sin el código del sistema (ej. Bonilla: "GOB_Serrano a La Estrella")
+    corto = nombre.str.extract(r"^([A-ZÁÉÍÓÚÑ]{2,5})_(.+)$")
+    solo_eje = ~con_codigo & corto[0].notna()
+    g.loc[solo_eje, "eje"] = corto.loc[solo_eje, 0]
+    g.loc[solo_eje, "tramo"] = corto.loc[solo_eje, 1].str.strip()
     g["factibilidad"] = g["factibilidad"].fillna("").str.strip()
     return g
 
