@@ -84,7 +84,7 @@ CAPAS_REFERENCIA = [
      "derivar": lambda g: derivar_fact_tramos(g), "campos": ["sistema", "name", "eje", "tramo", "factibilidad"]},
     {"id": "fact_perfiles", "patron": "factibilidad_sistemas/*/pines_perfiles_*.geojson", "solo_cod": True,
      "derivar": lambda g: derivar_fact_perfiles(g),
-     "campos": ["sistema", "name", "perfil_existente", "perfil_proy_A", "perfil_proy_B"]},
+     "campos": ["sistema", "name", "num", "titulo", "perfil_existente", "perfil_proy_A", "perfil_proy_B"]},
     {"id": "fact_conflictos", "patron": "factibilidad_sistemas/*/puntos_conflictos*.geojson",
      "campos": ["sistema", "descripcion"]},
 ]
@@ -361,11 +361,23 @@ def derivar_fact_tramos(g):
 
 
 def derivar_fact_perfiles(g):
-    """Enlaces de Streetmix: quita espacios y saltos de línea sobrantes."""
+    """Enlaces de Streetmix: quita espacios y saltos de línea sobrantes.
+    num = número del pin para el círculo del mapa ("01"); titulo = "Perfil 01 · <calle>".
+    Sirve para name = "01" (NS) o "Perfil 1 Providencia" (VM)."""
+    import re
     for k in ["perfil_existente", "perfil_proy_A", "perfil_proy_B"]:
         if k not in g.columns:
             g[k] = None
         g[k] = g[k].where(g[k].notna(), None).map(lambda s: s.strip() or None if isinstance(s, str) else None)
+
+    def partes(nombre):
+        nombre = str(nombre or "").strip()
+        m = re.match(r"^(?:perfil\s*)?(\d+)\s*[-–·:_]?\s*(.*)$", nombre, re.I)
+        if not m:
+            return nombre, f"Perfil {nombre}" if nombre else "Perfil"
+        num = m.group(1).zfill(2)
+        return num, f"Perfil {num}" + (f" · {m.group(2)}" if m.group(2) else "")
+    g["num"], g["titulo"] = zip(*g["name"].map(partes)) if len(g) else ([], [])
     return g
 
 

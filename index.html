@@ -6,8 +6,8 @@
 <title>Análisis de factibilidad de ejes priorizados</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202611241804"></script>
-<script src="data/capas.js?v=202611241804"></script>
+<script src="data/datos.js?v=202611241837"></script>
+<script src="data/capas.js?v=202611241837"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -281,6 +281,18 @@
   .badge.mini:first-child { margin-left: 0; }
   /* Recorrido tipo línea de metro (vista de sistema) */
   .metro { margin: 2px 0 0; }
+  .kpi.sisOn { position: relative; text-align: left; font: inherit; color: inherit; cursor: pointer; padding-left: 34px; }
+  .kpi.sisOn:hover { border-color: #9c9a93; }
+  .kpi.sisOn i { position: absolute; left: 10px; top: 11px; width: 16px; height: 16px; border-radius: 4px;
+    border: 2px solid var(--ink); background: var(--ink); }
+  .kpi.sisOn i::after { content: ""; position: absolute; left: 4px; top: 0; width: 4px; height: 9px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .kpi.sisOn[aria-pressed="false"] { background: #f6f5f2; }
+  .kpi.sisOn[aria-pressed="false"] b, .kpi.sisOn[aria-pressed="false"] span { opacity: .45; }
+  .kpi.sisOn[aria-pressed="false"] i { background: #fff; border-color: #9c9a93; }
+  .kpi.sisOn[aria-pressed="false"] i::after { display: none; }
+  .mSis { margin: 16px 0 2px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700;
+    color: var(--ink); }
   .mEje { display: flex; align-items: center; gap: 8px; padding: 12px 0 4px; font-size: 11px; color: var(--ink-2); }
   .mEje:first-child { padding-top: 2px; }
   .mEje b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--ink); }
@@ -1165,6 +1177,8 @@ function compararSistemas(tipos, relleno) {
 const DETALLE = [   // cod = subcarpeta de factibilidad_sistemas; sistema = nombre en la capa de sistemas
   { cod: "NS", nombre: "Norte Sur", sistema: "Sistema Norte Sur" },
   { cod: "VM", nombre: "Vicuña Mackenna", sistema: "Sistema Vicuña Mackenna" },
+  // vista combinada (prueba): junta los sistemas de "partes" en un mismo mapa
+  { cod: "NSVM", nombre: "Norte Sur + Vicuña Mackenna", partes: ["NS", "VM"] },
 ];
 const FACT = [["Existente", "#2a78d6"], ["En diseño", "#b48ee6"], ["Alta", "#0ca30c"], ["Media", "#fab219"], ["Baja", "#d03b3b"], ["Par vial", "#d4148c"]];
 const FACT_OTRO = "#a8a7a0", ROJO_CONF = "#d7191c";
@@ -1185,6 +1199,7 @@ let vista = "red", factSel = null;
 // Recorrido tipo "línea de metro": cada calle (eje del código del tramo) es una línea; sus tramos van de norte a sur
 // y los conflictos y perfiles se muestran como estaciones en el tramo más cercano.
 function prepararDetalle(d) {
+  if (d.partes) return;   // las vistas combinadas se arman después, con los sistemas ya preparados
   d.skey = D.sistemas.find(s => s.nombre === d.sistema)?.key;
   d.tramos = FT.features.filter(f => f.properties.sistema === d.cod);
   d.conf = FC.features.filter(f => f.properties.sistema === d.cod);
@@ -1207,7 +1222,10 @@ function prepararDetalle(d) {
     p._i = i; p._s0 = Math.min(...ss); p._s1 = Math.max(...ss);
     p._con = /^\((?!alternativa)/i.test(p.tramo || "");   // conector corto entre calles paralelas, ej. "(Tarapacá) ..."
     p._fact = (p.factibilidad || "").trim() || "Sin dato";
-    const e = ejes[p.eje || "?"] ||= { eje: p.eje || "?", s0: Infinity, km: 0, tramos: [] };
+    if (!String(p.tramo ?? "").trim()) p.tramo = "(sin nombre)";
+    // sin eje: se agrupa por nombre, y si tampoco tiene nombre va solo (así queda en su lugar del recorrido)
+    const clave = p.eje || (p.tramo !== "(sin nombre)" ? "·" + p.tramo : "#" + i);
+    const e = ejes[clave] ||= { eje: p.eje || "?", s0: Infinity, km: 0, tramos: [] };
     e.s0 = Math.min(e.s0, p._s0); e.km += p.km_geom || 0; e.tramos.push(f);
   });
   d.ejes = Object.values(ejes).sort((a, b) => a.s0 - b.s0);
@@ -1234,14 +1252,32 @@ function prepararDetalle(d) {
   }
   const porLinea = (a, b) => a.properties._k - b.properties._k || a.properties._s - b.properties._s;
   d.conf.sort(porLinea).forEach((f, i) => f.properties.n = i + 1);   // numerados en el orden del recorrido
-  d.perf.sort((a, b) => String(a.properties.name).localeCompare(String(b.properties.name), "es", { numeric: true }));
+  d.perf.forEach(f => { const p = f.properties; p.num ??= p.name; p.titulo ??= "Perfil " + p.name; });
+  d.perf.sort((a, b) => String(a.properties.num).localeCompare(String(b.properties.num), "es", { numeric: true }));
 }
 DETALLE.forEach(prepararDetalle);
+// Vistas combinadas: cada sistema conserva su orden y numeración; se muestran uno después del otro
+DETALLE.filter(d => d.partes).forEach(d => {
+  d.subs = d.partes.map(c => DETALLE.find(x => x.cod === c)).filter(Boolean);
+  d.tramos = d.subs.flatMap(s => s.tramos);
+  d.conf = d.subs.flatMap(s => s.conf);
+  d.perf = d.subs.flatMap(s => s.perf);
+});
 const detActual = () => DETALLE.find(x => x.cod === vista);
+const sisApagados = new Set();   // vista combinada: sistemas apagados con su interruptor
+const subsDe = d => d.subs ? d.subs.filter(s => !sisApagados.has(s.cod)) : [d];
+const filtroSisDe = d => d.partes ? ["in", ["get", "sistema"], ["literal", subsDe(d).map(s => s.cod)]] :
+  ["==", ["get", "sistema"], d.cod];
+// filtros de las capas del sistema (se vuelven a aplicar al prender / apagar un sistema en la vista combinada)
+function filtrarDet(d) {
+  const deSis = filtroSisDe(d);
+  CAPAS_DET.forEach(id => map.getLayer(id) &&
+    map.setFilter(id, id === "det-hover" ? ["all", deSis, ["==", ["get", "_i"], -1]] : deSis));
+}
 
 // Pestañas (sobre el mapa)
 document.getElementById("vistas").innerHTML = `<button data-v="red" role="tab">Red Sistemas</button>` +
-  DETALLE.map(d => `<button data-v="${d.cod}" role="tab">Sistema ${esc(d.nombre)}</button>`).join("");
+  DETALLE.map(d => `<button data-v="${d.cod}" role="tab">${d.partes ? "" : "Sistema "}${esc(d.nombre)}</button>`).join("");
 document.querySelectorAll("#vistas button").forEach(b => b.onclick = () => {
   vista = b.dataset.v; factSel = null;
   history.replaceState(null, "", vista === "red" ? location.pathname + location.search : "#" + vista);
@@ -1290,9 +1326,7 @@ function aplicarVista(encuadrar) {
     return;
   }
   CAPAS_RED.forEach(id => vis(id, false));
-  const deSis = ["==", ["get", "sistema"], d.cod];
-  ["det-hover", "det-casing", "det-tramos", "det-conf", "det-conf-n", "det-perf", "det-perf-n"].forEach(id =>
-    map.setFilter(id, id === "det-hover" ? ["all", deSis, ["==", ["get", "name"], ""]] : deSis));
+  filtrarDet(d);
   CAPAS_DET.forEach(id => vis(id, true));
   pintarFactSel();
   if (encuadrar) {
@@ -1314,7 +1348,8 @@ function leyendaSis(d) {
   document.getElementById("leySis").innerHTML = d.tramos.length ?
     `<p class="ayuda" style="margin:2px 0 4px">Tramos de los ejes según factibilidad</p>` +
     cats.map(([k, c]) => item(linea(c), esc(k))).join("") +
-    item(circulo(ROJO_CONF, "1"), "Punto de conflicto", "Numerado en el orden del recorrido de norte a sur") +
+    item(circulo(ROJO_CONF, "1"), "Punto de conflicto", "Numerado en el orden del recorrido de norte a sur" +
+      (d.partes ? " (cada sistema por separado)" : "")) +
     item(circulo("#111", "01"), "Pin de perfil de calle", "Clic para abrir los perfiles existente y proyectado en Streetmix") :
     `<p class="ayuda">Este sistema aún no tiene análisis de factibilidad.</p>`;
 }
@@ -1329,8 +1364,8 @@ function renderSis(d) {
       <strong>pines_perfiles_${esc(d.cod)}.geojson</strong>, y ejecuta <strong>procesar_red.py</strong>.</span></div>`;
     return;
   }
-  const km = {};
-  d.tramos.forEach(f => km[f.properties._fact] = (km[f.properties._fact] || 0) + (f.properties.km_geom || 0));
+  const km = {}, tramosOn = subsDe(d).flatMap(s => s.tramos);
+  tramosOn.forEach(f => km[f.properties._fact] = (km[f.properties._fact] || 0) + (f.properties.km_geom || 0));
   const cats = FACT.map(x => x[0]).filter(k => km[k] > 0).concat(Object.keys(km).filter(k => !FACT.some(x => x[0] === k)));
   const total = Object.values(km).reduce((a, b) => a + b, 0);
   const pct = k => fmt(km[k] / total * 100, 0);
@@ -1350,24 +1385,40 @@ function renderSis(d) {
     elegirFact(factSel === b.dataset.f ? null : b.dataset.f));
   ley.querySelector(".verTodas")?.addEventListener("click", () => elegirFact(null));
   ley.querySelectorAll(".barraTipos div").forEach(b => b.classList.toggle("dim", !!factSel && b.dataset.f !== factSel));
-  el.innerHTML = `<h2>Sistema ${esc(d.nombre)}</h2>
+  const subs = subsDe(d).filter(s => s.tramos.length);
+  const kmDe = s => s.tramos.reduce((a, f) => a + (f.properties.km_geom || 0), 0);
+  const nOn = subs.length, nTot = d.subs?.length;
+  el.innerHTML = `<h2>${d.partes ? "Sistemas" : "Sistema"} ${esc(d.nombre)}</h2>
     <div class="kpis">
-      <div class="kpi wide"><b>${fmt(total)} km</b><span>Sistema ${esc(d.nombre)} completo (${d.tramos.length} tramos)</span></div>
+      <div class="kpi wide"><b>${fmt(total)} km</b><span>${d.partes ? (nOn === nTot ? "Sistemas en conjunto" :
+        nOn ? "Sólo los sistemas prendidos" : "Ningún sistema prendido") : "Sistema " + esc(d.nombre) + " completo"}
+        (${tramosOn.length} tramos)</span></div>
+      ${d.partes ? d.subs.map(s => `<button class="kpi sisOn" data-s="${s.cod}" aria-pressed="${!sisApagados.has(s.cod)}"
+        title="Clic para ${sisApagados.has(s.cod) ? "prender" : "apagar"} este sistema"><i></i><b>${fmt(kmDe(s))} km</b>
+        <span>${esc(s.nombre)} (${s.tramos.length} tramos)</span></button>`).join("") : ""}
     </div>
+    ${d.partes ? `<p class="ayuda" style="margin:6px 0 0">Clic en un sistema para prenderlo o apagarlo en el mapa.</p>` : ""}
     <h2>Recorrido de norte a sur</h2>
     <p class="ayuda" style="margin:-4px 0 6px"><span class="badge conf mini">1</span> conflicto
       <span class="badge perf mini">01</span> perfil · clic en una fila para verla en el mapa</p>
-    <div class="metro">${d.ejes.map(e => metroEje(d, e)).join("")}</div>
+    ${subs.map(s => `${d.partes ? `<h3 class="mSis">Sistema ${esc(s.nombre)}</h3>` : ""}
+      <div class="metro" data-s="${s.cod}">${s.ejes.map(e => metroEje(s, e)).join("")}</div>`).join("")}
     <p class="nota">Tramos ordenados de norte a sur, agrupados por calle. Los conflictos y perfiles se ubican en el tramo
-      más cercano. Fuente: Visor_capas\\factibilidad_sistemas\\${esc(d.cod)}.</p>`;
-  const marcar = name => map.getLayer("det-hover") && map.setFilter("det-hover", ["all",
-    ["==", ["get", "sistema"], d.cod], ["==", ["get", "name"], name || ""]]);
+      más cercano. Fuente: Visor_capas\\factibilidad_sistemas\\${subs.map(s => esc(s.cod)).join(", ")}.</p>`;
+  const marcar = (cod, i) => map.getLayer("det-hover") && map.setFilter("det-hover", ["all",
+    ["==", ["get", "sistema"], cod || ""], ["==", ["get", "_i"], i ?? -1]]);   // sólo ese tramo (hay nombres repetidos)
   el.querySelectorAll(".mFila").forEach(r => {
-    const f = r.dataset.t != null ? d.tramos[+r.dataset.t] : r.dataset.c != null ? d.conf[+r.dataset.c] : d.perf[+r.dataset.p];
-    const tramo = d.tramos[r.dataset.t != null ? +r.dataset.t : f.properties._ti];
-    r.onmouseenter = () => marcar(tramo?.properties.name);
+    const s = DETALLE.find(x => x.cod === r.closest(".metro").dataset.s);
+    const f = r.dataset.t != null ? s.tramos[+r.dataset.t] : r.dataset.c != null ? s.conf[+r.dataset.c] : s.perf[+r.dataset.p];
+    const tramo = s.tramos[r.dataset.t != null ? +r.dataset.t : f.properties._ti];
+    r.onmouseenter = () => marcar(s.cod, tramo?.properties._i);
     r.onmouseleave = () => marcar(null);
     r.onclick = ev => { if (!ev.target.closest("a")) irA(f); };
+  });
+  el.querySelectorAll(".sisOn").forEach(b => b.onclick = () => {   // prender / apagar un sistema (vista combinada)
+    const c = b.dataset.s;
+    sisApagados.has(c) ? sisApagados.delete(c) : sisApagados.add(c);
+    renderSis(d); filtrarDet(d);
   });
 }
 function metroEje(d, e) {
@@ -1381,8 +1432,8 @@ function metroEje(d, e) {
         <span class="mLin"><span class="badge conf">${cf.properties.n}</span></span>
         <span class="mNom">${esc(cf.properties.descripcion || "Punto de conflicto")}</span></div>`).join("") +
       est(d.perf, p._i).map(pf => `<div class="mFila mEst${dim}" data-p="${d.perf.indexOf(pf)}" style="--c:${c}">
-        <span class="mLin"><span class="badge perf">${esc(pf.properties.name)}</span></span>
-        <span class="mNom">Perfil ${esc(pf.properties.name)}${enlacesPerfil(pf.properties)}</span></div>`).join("");
+        <span class="mLin"><span class="badge perf">${esc(pf.properties.num)}</span></span>
+        <span class="mNom">${esc(pf.properties.titulo)}${enlacesPerfil(pf.properties)}</span></div>`).join("");
   }).join("");
 }
 // Perfiles de un pin: "Proyectado" si hay uno solo; "Proyectado A" y "B" si hay dos
@@ -1421,7 +1472,7 @@ function irA(f) {
   map.once("moveend", () => popup({ point: map.project(ll), lngLat: maplibregl.LngLat.convert(ll) }));
 }
 function htmlDet(id, p) {
-  const nom = detActual()?.nombre || p.sistema;
+  const nom = DETALLE.find(x => x.cod === p.sistema)?.nombre || p.sistema;
   if (id === "det-tramos") return `<b>${esc(p.tramo || p.name)}</b>${tabla([["Sistema", nom],
     ["Factibilidad", p.factibilidad || "Sin dato"], ["Largo", km2(p.km_geom)], ["Código", p.name]])}`;
   if (id.startsWith("det-conf")) return `<b>Conflicto ${p.n}: ${esc(p.descripcion || "")}</b>${tabla([["Sistema", nom],
@@ -1429,7 +1480,7 @@ function htmlDet(id, p) {
   // perfiles: mismas filas de la tabla, con el enlace a Streetmix como valor
   const filas = [["Sistema", esc(nom)], ["Tramo cercano", esc(p._tramo)], ...perfilesPin(p).map(([t, u]) =>
     [`Perfil ${t.toLowerCase()}`, `<a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">Abrir en Streetmix ↗</a>`])];
-  return `<b>Perfil ${esc(p.name)}</b><table>${filas.filter(r => r[1]).map(r =>
+  return `<b>${esc(p.titulo || "Perfil " + p.name)}</b><table>${filas.filter(r => r[1]).map(r =>
     `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table>`;
 }
 
@@ -1455,7 +1506,7 @@ map.on("load", () => {
   capa({ id: "det-perf", type: "circle", source: "ref-fact_perfiles",
     paint: { "circle-color": "#111", "circle-radius": 9.5, "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
   capa({ id: "det-perf-n", type: "symbol", source: "ref-fact_perfiles",
-    layout: { ...texto, "text-field": ["get", "name"] }, paint: { "text-color": "#fff" } });
+    layout: { ...texto, "text-field": ["coalesce", ["get", "num"], ["get", "name"]] }, paint: { "text-color": "#fff" } });
   for (const id of ["det-tramos", "det-conf", "det-perf"]) {
     map.on("mouseenter", id, () => { if (!window.EDICION?.capa) map.getCanvas().style.cursor = "pointer"; });
     map.on("mouseleave", id, () => { if (!window.EDICION?.capa) map.getCanvas().style.cursor = ""; });
