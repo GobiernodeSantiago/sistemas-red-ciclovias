@@ -240,8 +240,8 @@
   .enlaces .falta { font-size: 11px; color: var(--muted); padding: 1px 0; }
   .pop .enlaces a { margin-top: 0; display: inline-block; }
   /* Km por factibilidad: fijo en la esquina inferior izquierda del mapa (vista de sistema) */
-  #factLey { position: absolute; left: 12px; bottom: 12px; z-index: 3; width: 360px; padding: 14px 16px 12px;
-    box-shadow: 0 2px 14px rgba(0,0,0,.2); }
+  /* va dentro de los controles de abajo a la izquierda del mapa: se apila con el perfil de elevación, sin superponerse */
+  #factLey { width: 360px; padding: 14px 16px 12px; box-shadow: 0 2px 14px rgba(0,0,0,.2); margin: 0 0 12px 12px; }
   #factLey[hidden] { display: none; }
   #factLey > span { font-size: 13px; color: var(--ink-2); }
   #factLey .barraTipos { height: 16px; margin: 10px 0 8px; gap: 3px; }
@@ -1217,6 +1217,11 @@ if (DETALLE.some(d => d.cod === location.hash.slice(1))) vista = location.hash.s
 
 const CAPAS_RED = ["ex-act", "ex-act-casing", "br", "sis-otros", ...CAPAS_SIS];
 const CAPAS_DET = ["det-hover", "det-casing", "det-tramos", "det-conf", "det-conf-n", "det-perf", "det-perf-n"];
+{ // recuadro de km por factibilidad: a la columna de controles de abajo a la izquierda (debajo del perfil de elevación)
+  const ley = document.getElementById("factLey");
+  ley.classList.add("maplibregl-ctrl");
+  map.getContainer().querySelector(".maplibregl-ctrl-bottom-left").appendChild(ley);
+}
 // Capas del grupo "Análisis de red" (panel derecho): se apagan al entrar a un sistema y se restauran al volver a la red
 let guardadoRed = null;
 function apagarAnalisisRed() {
