@@ -1217,8 +1217,22 @@ if (DETALLE.some(d => d.cod === location.hash.slice(1))) vista = location.hash.s
 
 const CAPAS_RED = ["ex-act", "ex-act-casing", "br", "sis-otros", ...CAPAS_SIS];
 const CAPAS_DET = ["det-hover", "det-casing", "det-tramos", "det-conf", "det-conf-n", "det-perf", "det-perf-n"];
+// Capas del grupo "Análisis de red" (panel derecho): se apagan al entrar a un sistema y se restauran al volver a la red
+let guardadoRed = null;
+function apagarAnalisisRed() {
+  if (guardadoRed) return;
+  const ins = [...document.querySelectorAll("#capas details.grp:first-of-type input[type=checkbox]")];
+  guardadoRed = ins.map(i => [i, i.checked]);
+  ins.forEach(i => { if (i.checked) { i.checked = false; i.dispatchEvent(new Event("change")); } });
+}
+function restaurarAnalisisRed() {
+  if (!guardadoRed) return;
+  guardadoRed.forEach(([i, c]) => { if (i.checked !== c) { i.checked = c; i.dispatchEvent(new Event("change")); } });
+  guardadoRed = null;
+}
 function aplicarVista(encuadrar) {
   const d = detActual();
+  if (d) apagarAnalisisRed(); else restaurarAnalisisRed();
   document.querySelectorAll("#vistas button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === vista));
   document.getElementById("vistaRed").hidden = !!d;
   document.getElementById("vistaSis").hidden = !d;
