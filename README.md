@@ -33,6 +33,21 @@ Capas de referencia (PMC, factibilidad EVA, ciclovías proyectadas, La Chimba, A
 Pedaleable, ferias, pasos a desnivel, paraderos, siniestros): se definen en `CAPAS_REFERENCIA` del
 script (ruta y campos a exportar) y su estilo/popup en `CAPAS_REF` de `index.html`.
 
+## Análisis de factibilidad por sistema (pestañas sobre el mapa)
+
+Las pestañas «Sistema Norte Sur», «Sistema Vicuña Mackenna», etc. muestran la factibilidad por tramo, los puntos de
+conflicto y los pines de perfiles (enlaces a Streetmix). Los datos están en
+`Visor_capas\factibilidad_sistemas\<COD>\` (una subcarpeta por sistema, ej. `NS`, `VM`):
+
+| Archivo | Campos |
+|---|---|
+| `factibilidad_tramos_<COD>.geojson` | `name` = `<COD>_<eje>_<tramo>` (ej. `NS_SD_Matta a Copiapo`), `factibilidad` (Existente, En diseño, Alta, Media, Baja, Par vial) |
+| `puntos_conflictos*.geojson` | `descripcion` |
+| `pines_perfiles_<COD>.geojson` | `name` (n° de pin), `perfil_existente`, `perfil_proy_A`, `perfil_proy_B` (enlaces https) |
+
+Después de editarlos en QGIS, ejecutar `procesar_red.py`. Las pestañas y los colores se definen en `DETALLE` y `FACT`
+de `index.html`. Se puede abrir directo una pestaña con `index.html#NS`.
+
 Campos requeridos en la capa de sistemas: `Sistema`, `tipo`, `name`.
 Las categorías se colorean según el texto de `tipo` ("Plan Maestro", "Extra",
 "Existente", "Alternativa", "Planificado"); los tramos cuyo tipo contiene

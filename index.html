@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Red Ciclovías por Sistema</title>
+<title>Análisis de factibilidad de ejes priorizados</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202611181434"></script>
-<script src="data/capas.js?v=202611181434"></script>
+<script src="data/datos.js?v=202611241233"></script>
+<script src="data/capas.js?v=202611241233"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -205,7 +205,75 @@
   .pop table { border-collapse: collapse; margin-top: 4px; }
   .pop td { padding: 1px 8px 1px 0; vertical-align: top; }
   .pop td:first-child { color: var(--muted); }
-  #toggle { display: none; }
+  /* Pestañas de visualización, sobre el mapa (Red Sistemas | Sistema ...) */
+  #centro { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  #centro > #mapWrap { min-height: 0; }
+  .pop td a { margin-top: 0; }
+  #vistas { display: flex; gap: 2px; padding: 8px 12px 0; background: #eceae4; border-bottom: 1px solid var(--line);
+    flex: none; overflow-x: auto; }
+  #vistas button { border: 1px solid transparent; border-bottom: 0; background: none; font: inherit; font-size: 13px;
+    font-weight: 500; color: var(--ink-2); padding: 8px 16px 9px; border-radius: 8px 8px 0 0; cursor: pointer;
+    white-space: nowrap; margin-bottom: -1px; }
+  #vistas button:hover { background: rgba(255,255,255,.55); color: var(--ink); }
+  #vistas button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600;
+    border-color: var(--line); box-shadow: inset 0 3px 0 var(--accent); }
+  #vistaRed[hidden], #vistaSis[hidden] { display: none; }
+  /* Vista de detalle de un sistema */
+  .filaFact { display: flex; align-items: center; gap: 7px; width: 100%; border: 0; background: none; font: inherit;
+    font-size: 12px; padding: 3px 4px; margin: 0 -4px; border-radius: 5px; cursor: pointer; text-align: left; color: var(--ink); }
+  .filaFact:hover { background: #f0efec; }
+  .filaFact[aria-pressed="true"] { background: #e8f0fb; }
+  .filaFact i { width: 18px; height: 6px; border-radius: 3px; flex: none; }
+  .filaFact span { flex: 1; display: inline; font-size: 12px; color: var(--ink); }
+  .filaFact b { display: inline; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .filaFact small { width: 34px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .filaFact em { font-style: normal; color: #b4462a; font-size: 11px; }
+  .barraTipos div.dim { opacity: .2; }
+  .badge { flex: none; display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 10px;
+    font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 0 4px; }
+  .badge.conf { background: #d7191c; color: #fff; }
+  .badge.perf { background: #111; color: #fff; }
+  .enlaces { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .enlaces a { font-size: 11px; text-decoration: none; color: var(--accent); border: 1px solid #c9dcf3; border-radius: 4px;
+    padding: 1px 6px; background: #f5f9fe; }
+  .enlaces a:hover { background: #e8f0fb; }
+  .enlaces .falta { font-size: 11px; color: var(--muted); padding: 1px 0; }
+  .pop .enlaces a { margin-top: 0; display: inline-block; }
+  /* Km por factibilidad: fijo en la esquina inferior izquierda del mapa (vista de sistema) */
+  #factLey { position: absolute; left: 12px; bottom: 12px; z-index: 3; width: 360px; padding: 14px 16px 12px;
+    box-shadow: 0 2px 14px rgba(0,0,0,.2); }
+  #factLey[hidden] { display: none; }
+  #factLey > span { font-size: 13px; color: var(--ink-2); }
+  #factLey .barraTipos { height: 16px; margin: 10px 0 8px; gap: 3px; }
+  #factLey .filaFact { font-size: 14px; padding: 5px 6px; margin: 0 -6px; }
+  #factLey .filaFact span, #factLey .filaFact b { font-size: 14px; }
+  #factLey .filaFact i { width: 24px; height: 8px; border-radius: 4px; }
+  #factLey .filaFact small { width: 42px; font-size: 12.5px; }
+  .mCorte { height: 10px; }
+  .mCorte:first-child { height: 2px; }
+  .badge.mini { min-width: 16px; height: 16px; font-size: 9px; vertical-align: -3px; margin-left: 6px; }
+  .badge.mini:first-child { margin-left: 0; }
+  /* Recorrido tipo línea de metro (vista de sistema) */
+  .metro { margin: 2px 0 0; }
+  .mEje { display: flex; align-items: center; gap: 8px; padding: 12px 0 4px; font-size: 11px; color: var(--ink-2); }
+  .mEje:first-child { padding-top: 2px; }
+  .mEje b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--ink); }
+  .mEje small { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mNodo { width: 22px; flex: none; display: grid; place-items: center; }
+  .mNodo::before { content: ""; width: 12px; height: 12px; border-radius: 50%; border: 3px solid var(--ink); background: #fff; }
+  .mFila { display: flex; align-items: stretch; gap: 8px; font-size: 12px; cursor: pointer; border-radius: 4px; }
+  .mFila:hover { background: #f3f2ee; }
+  .mFila.dim { opacity: .3; }
+  .mLin { position: relative; width: 22px; flex: none; display: grid; place-items: center; }
+  .mLin::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 6px; margin-left: -3px; background: var(--c); }
+  .mTramo + .mTramo .mLin::before { top: 1.5px; }   /* corte blanco entre tramos */
+  .mLin .badge { position: relative; z-index: 1; box-shadow: 0 0 0 2px #fff; min-width: 19px; height: 19px; font-size: 9.5px; }
+  .mNom { flex: 1; min-width: 0; padding: 4px 0; line-height: 1.3; }
+  .mTramo.con .mNom { color: var(--ink-2); font-style: italic; }
+  .mFac { width: 62px; flex: none; padding: 4px 0; font-size: 11px; color: var(--ink-2); }
+  .mKm { width: 34px; flex: none; padding: 4px 4px 4px 0; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .mEst .mNom { color: var(--ink-2); padding: 5px 0; }
+  .mEst .enlaces { margin-top: 3px; }  #toggle { display: none; }
   @media (max-width: 720px) {
     #app { flex-direction: column-reverse; }
     #panel { width: 100%; height: 46%; border-right: 0; border-top: 1px solid var(--line); }
@@ -223,7 +291,9 @@
   <aside id="panel">
     <button id="toggle">Ocultar panel</button>
     <img class="logo" src="img/logo_gobierno_santiago.svg" alt="Gobierno de Santiago" width="2916" height="740">
-    <h1>Red de ciclovías por Sistema</h1>
+    <h1>Análisis de factibilidad de ejes priorizados</h1>
+
+    <div id="vistaRed">
     <p class="sub" id="subtitulo"></p>
 
     <h2>Sistemas</h2>
@@ -248,7 +318,11 @@
     <div class="kpis" id="kpis"></div>
 
     <p class="nota" id="nota"></p>
+    </div>
+    <div id="vistaSis" hidden></div>
   </aside>
+  <div id="centro">
+  <nav id="vistas" role="tablist" aria-label="Visualización"></nav>
   <div id="mapWrap">
     <div id="map">
       <section id="cmpPanel" class="cerrado" hidden>
@@ -256,6 +330,7 @@
           <b>Comparación entre sistemas</b><small id="cmpResumen"></small><span class="chev">▾</span></button>
         <div id="cmpCuerpo" hidden></div>
       </section>
+      <section id="factLey" class="kpi" hidden></section>
     </div>
     <section id="sv" hidden>
       <div id="svBar">
@@ -267,11 +342,15 @@
         referrerpolicy="no-referrer-when-downgrade"></iframe>
     </section>
   </div>
+  </div>
   <aside id="panelDer">
-    <div class="cab"><h2>Categorías del sistema</h2>
+    <div class="cab"><h2 id="tituloLey">Categorías del sistema</h2>
       <button id="ocultarDer" title="Ocultar panel de capas y leyenda">Ocultar ›</button></div>
-    <label><input type="checkbox" id="cSis" checked> Capa de sistemas</label>
-    <div id="leyenda"></div>
+    <div id="leyRed">
+      <label><input type="checkbox" id="cSis" checked> Capa de sistemas</label>
+      <div id="leyenda"></div>
+    </div>
+    <div id="leySis" hidden></div>
     <h2>Capas</h2>
     <div id="capas"></div>
   </aside>
@@ -884,6 +963,7 @@ function vis(id, on) { if (map.getLayer(id)) map.setLayoutProperty(id, "visibili
 
 // ---------- Render
 function render(encuadrar) {
+  if (vista !== "red") return;   // vista de detalle de un sistema: la red no se redibuja
   const { modo, umbral } = estado;
   const todos = estado.sel.size === ORDEN.length, varios = estado.sel.size > 1;
   const key = claveCombo();
@@ -1044,6 +1124,274 @@ function compararSistemas(tipos, relleno) {
   cab.onclick = () => poner(cab.getAttribute("aria-expanded") !== "true");
 })();
 
+// ---------- Vista de detalle por sistema: factibilidad por tramo, puntos de conflicto y perfiles (Streetmix)
+// Datos: Visor_capas\factibilidad_sistemas\<cod>\ (los junta procesar_red.py en data/capas.js).
+const DETALLE = [   // cod = subcarpeta de factibilidad_sistemas; sistema = nombre en la capa de sistemas
+  { cod: "NS", nombre: "Norte Sur", sistema: "Sistema Norte Sur" },
+  { cod: "VM", nombre: "Vicuña Mackenna", sistema: "Sistema Vicuña Mackenna" },
+];
+const FACT = [["Existente", "#2a78d6"], ["En diseño", "#b48ee6"], ["Alta", "#0ca30c"], ["Media", "#fab219"], ["Baja", "#d03b3b"], ["Par vial", "#d4148c"]];
+const FACT_OTRO = "#a8a7a0", ROJO_CONF = "#d7191c";
+const colorFact = v => (FACT.find(x => x[0] === v) || [null, FACT_OTRO])[1];
+const VACIO = { type: "FeatureCollection", features: [] };
+const FT = REF.fact_tramos || VACIO, FC = REF.fact_conflictos || VACIO, FP = REF.fact_perfiles || VACIO;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const linkSeguro = u => typeof u === "string" && /^https:\/\//.test(u.trim()) ? u.trim() : null;
+let vista = "red", factSel = null;
+
+// Orden de norte a sur: proyección sobre la dirección principal de los tramos del sistema.
+// Recorrido tipo "línea de metro": cada calle (eje del código del tramo) es una línea; sus tramos van de norte a sur
+// y los conflictos y perfiles se muestran como estaciones en el tramo más cercano.
+function prepararDetalle(d) {
+  d.skey = D.sistemas.find(s => s.nombre === d.sistema)?.key;
+  d.tramos = FT.features.filter(f => f.properties.sistema === d.cod);
+  d.conf = FC.features.filter(f => f.properties.sistema === d.cod);
+  d.perf = FP.features.filter(f => f.properties.sistema === d.cod);
+  if (!d.tramos.length) return;
+  const vertices = g => { const vs = []; (function w(c) { typeof c[0] === "number" ? vs.push(c) : c.forEach(w); })(g.coordinates); return vs; };
+  const vert = d.tramos.flatMap(f => vertices(f.geometry));
+  const lon0 = vert.reduce((s, v) => s + v[0], 0) / vert.length, lat0 = vert.reduce((s, v) => s + v[1], 0) / vert.length;
+  const kx = 111320 * Math.cos(lat0 * Math.PI / 180), ky = 110540;
+  const xy = v => [(v[0] - lon0) * kx, (v[1] - lat0) * ky];
+  let sxx = 0, syy = 0, sxy = 0;
+  for (const v of vert) { const [x, y] = xy(v); sxx += x * x; syy += y * y; sxy += x * y; }
+  const th = Math.atan2(2 * sxy, sxx - syy) / 2;
+  let u = [Math.cos(th), Math.sin(th)];
+  if (u[1] > 0) u = [-u[0], -u[1]];   // avanza hacia el sur
+  const proy = v => { const [x, y] = xy(v); return x * u[0] + y * u[1]; };
+  const ejes = {};
+  d.tramos.forEach((f, i) => {
+    const p = f.properties, ss = vertices(f.geometry).map(proy);
+    p._i = i; p._s0 = Math.min(...ss); p._s1 = Math.max(...ss);
+    p._con = /^\((?!alternativa)/i.test(p.tramo || "");   // conector corto entre calles paralelas, ej. "(Tarapacá) ..."
+    p._fact = (p.factibilidad || "").trim() || "Sin dato";
+    const e = ejes[p.eje || "?"] ||= { eje: p.eje || "?", s0: Infinity, km: 0, tramos: [] };
+    e.s0 = Math.min(e.s0, p._s0); e.km += p.km_geom || 0; e.tramos.push(f);
+  });
+  d.ejes = Object.values(ejes).sort((a, b) => a.s0 - b.s0);
+  d.ejes.forEach(e => e.tramos.sort((a, b) => a.properties._s0 - b.properties._s0));
+  d.orden = d.ejes.flatMap(e => e.tramos);   // orden de la línea
+  d.orden.forEach((f, k) => f.properties._k = k);
+  // tramo más cercano a cada punto (distancia a los segmentos de la línea)
+  const distSeg = (p, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+  };
+  const partes = f => f.geometry.type === "MultiLineString" ? f.geometry.coordinates : [f.geometry.coordinates];
+  for (const f of [...d.conf, ...d.perf]) {
+    const p = f.properties, q = xy(f.geometry.coordinates);
+    let mejor = null, dm = Infinity;
+    for (const t of d.tramos) for (const parte of partes(t)) for (let i = 1; i < parte.length; i++) {
+      const dd = distSeg(q, xy(parte[i - 1]), xy(parte[i]));
+      if (dd < dm) { dm = dd; mejor = t.properties; }
+    }
+    p._s = proy(f.geometry.coordinates);
+    p._ti = mejor ? mejor._i : null; p._k = mejor ? mejor._k : Infinity;
+    p._tramo = mejor ? mejor.tramo : null; p._eje = mejor ? mejor.eje : null;
+  }
+  const porLinea = (a, b) => a.properties._k - b.properties._k || a.properties._s - b.properties._s;
+  d.conf.sort(porLinea).forEach((f, i) => f.properties.n = i + 1);   // numerados en el orden del recorrido
+  d.perf.sort((a, b) => String(a.properties.name).localeCompare(String(b.properties.name), "es", { numeric: true }));
+}
+DETALLE.forEach(prepararDetalle);
+const detActual = () => DETALLE.find(x => x.cod === vista);
+
+// Pestañas (sobre el mapa)
+document.getElementById("vistas").innerHTML = `<button data-v="red" role="tab">Red Sistemas</button>` +
+  DETALLE.map(d => `<button data-v="${d.cod}" role="tab">Sistema ${esc(d.nombre)}</button>`).join("");
+document.querySelectorAll("#vistas button").forEach(b => b.onclick = () => {
+  vista = b.dataset.v; factSel = null;
+  history.replaceState(null, "", vista === "red" ? location.pathname + location.search : "#" + vista);
+  aplicarVista(true);
+});
+if (DETALLE.some(d => d.cod === location.hash.slice(1))) vista = location.hash.slice(1);
+
+const CAPAS_RED = ["ex-act", "ex-act-casing", "br", "sis-otros", ...CAPAS_SIS];
+const CAPAS_DET = ["det-hover", "det-casing", "det-tramos", "det-conf", "det-conf-n", "det-perf", "det-perf-n"];
+function aplicarVista(encuadrar) {
+  const d = detActual();
+  document.querySelectorAll("#vistas button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === vista));
+  document.getElementById("vistaRed").hidden = !!d;
+  document.getElementById("vistaSis").hidden = !d;
+  document.getElementById("factLey").hidden = !d || !d.tramos.length;
+  document.getElementById("leyRed").hidden = !!d;
+  document.getElementById("leySis").hidden = !d;
+  document.getElementById("tituloLey").textContent = d ? "Simbología del sistema" : "Categorías del sistema";
+  if (d) leyendaSis(d);
+  if (d) { renderSis(d); document.getElementById("cmpPanel").hidden = true; }
+  if (!map.getLayer("det-tramos")) return;   // el mapa aún no termina de cargar: se aplica en su "load"
+  if (!d) {
+    CAPAS_DET.forEach(id => vis(id, false));
+    const act = document.getElementById("cAct").checked;
+    vis("ex-act", act); vis("ex-act-casing", act); vis("br", document.getElementById("cBrechas").checked);
+    verSistemas(); render(encuadrar);
+    return;
+  }
+  CAPAS_RED.forEach(id => vis(id, false));
+  const deSis = ["==", ["get", "sistema"], d.cod];
+  ["det-hover", "det-casing", "det-tramos", "det-conf", "det-conf-n", "det-perf", "det-perf-n"].forEach(id =>
+    map.setFilter(id, id === "det-hover" ? ["all", deSis, ["==", ["get", "name"], ""]] : deSis));
+  CAPAS_DET.forEach(id => vis(id, true));
+  pintarFactSel();
+  if (encuadrar) {
+    const fs = d.tramos.length ? d.tramos : D.geo.sistemas.features.filter(f => f.properties.skey === d.skey);
+    if (fs.length) map.fitBounds(bbox({ features: fs }), { padding: 50, duration: 700 });
+  }
+}
+
+// Leyenda del panel derecho en la vista de sistema: tramos por factibilidad, conflictos y perfiles (igual que en el mapa)
+function leyendaSis(d) {
+  const linea = c => `<svg width="34" height="12"><line x1="4" y1="6" x2="30" y2="6" stroke="#fff" stroke-width="8.5"
+    stroke-linecap="round"/><line x1="4" y1="6" x2="30" y2="6" stroke="${c}" stroke-width="5" stroke-linecap="round"/></svg>`;
+  const circulo = (fondo, txt) => `<svg width="34" height="20"><circle cx="17" cy="10" r="9" fill="${fondo}" stroke="#fff"
+    stroke-width="2"/><text x="17" y="13.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff"
+    font-family="system-ui, sans-serif">${txt}</text></svg>`;
+  const item = (sim, nom, def) => `<div class="ley">${sim}<div><b>${nom}</b>${def ? `<span class="def">${def}</span>` : ""}</div></div>`;
+  const usadas = new Set(d.tramos.map(f => f.properties._fact));
+  const cats = FACT.filter(([k]) => usadas.has(k)).concat([...usadas].filter(k => !FACT.some(x => x[0] === k)).map(k => [k, FACT_OTRO]));
+  document.getElementById("leySis").innerHTML = d.tramos.length ?
+    `<p class="ayuda" style="margin:2px 0 4px">Tramos de los ejes según factibilidad</p>` +
+    cats.map(([k, c]) => item(linea(c), esc(k))).join("") +
+    item(circulo(ROJO_CONF, "1"), "Punto de conflicto", "Numerado en el orden del recorrido de norte a sur") +
+    item(circulo("#111", "01"), "Pin de perfil de calle", "Clic para abrir los perfiles existente y proyectado en Streetmix") :
+    `<p class="ayuda">Este sistema aún no tiene análisis de factibilidad.</p>`;
+}
+
+// Panel izquierdo de la vista de sistema
+function renderSis(d) {
+  const el = document.getElementById("vistaSis");
+  if (!d.tramos.length) {
+    el.innerHTML = `<h2>Sistema ${esc(d.nombre)}</h2><div class="kpi wide"><span>Aún no hay análisis de factibilidad para este
+      sistema. Para agregarlo, crea la carpeta <strong>Visor_capas\\factibilidad_sistemas\\${esc(d.cod)}</strong> con
+      <strong>factibilidad_tramos_${esc(d.cod)}.geojson</strong>, <strong>puntos_conflictos.geojson</strong> y
+      <strong>pines_perfiles_${esc(d.cod)}.geojson</strong>, y ejecuta <strong>procesar_red.py</strong>.</span></div>`;
+    return;
+  }
+  const km = {};
+  d.tramos.forEach(f => km[f.properties._fact] = (km[f.properties._fact] || 0) + (f.properties.km_geom || 0));
+  const cats = FACT.map(x => x[0]).filter(k => km[k] > 0).concat(Object.keys(km).filter(k => !FACT.some(x => x[0] === k)));
+  const total = Object.values(km).reduce((a, b) => a + b, 0);
+  const pct = k => fmt(km[k] / total * 100, 0);
+  // km por factibilidad: recuadro fijo sobre el mapa (esquina inferior izquierda)
+  const ley = document.getElementById("factLey");
+  ley.innerHTML = `<span>Km por factibilidad · clic para destacar en el mapa</span>
+    <div class="barraTipos">${cats.map(k => `<div data-f="${esc(k)}" style="flex:${km[k]};background:${colorFact(k)}"
+      title="${esc(k)}: ${fmt(km[k])} km"></div>`).join("")}</div>
+    ${cats.map(k => `<button class="filaFact" data-f="${esc(k)}" aria-pressed="${factSel === k}"><i style="background:${
+      colorFact(k)}"></i><span>${esc(k)}${FACT.some(x => x[0] === k) ? "" : " <em>(categoría no estándar)</em>"}</span>
+      <b>${fmt(km[k])} km</b><small>${pct(k)} %</small></button>`).join("")}`;
+  ley.querySelectorAll(".filaFact, .barraTipos div").forEach(b => b.onclick = () => {
+    factSel = factSel === b.dataset.f ? null : b.dataset.f; renderSis(d); pintarFactSel();
+  });
+  ley.querySelectorAll(".barraTipos div").forEach(b => b.classList.toggle("dim", !!factSel && b.dataset.f !== factSel));
+  el.innerHTML = `<h2>Sistema ${esc(d.nombre)}</h2>
+    <div class="kpis">
+      <div class="kpi wide"><b>${fmt(total)} km</b><span>Sistema ${esc(d.nombre)} completo (${d.tramos.length} tramos)</span></div>
+    </div>
+    <h2>Recorrido de norte a sur</h2>
+    <p class="ayuda" style="margin:-4px 0 6px"><span class="badge conf mini">1</span> conflicto
+      <span class="badge perf mini">01</span> perfil · clic en una fila para verla en el mapa</p>
+    <div class="metro">${d.ejes.map(e => metroEje(d, e)).join("")}</div>
+    <p class="nota">Tramos ordenados de norte a sur, agrupados por calle. Los conflictos y perfiles se ubican en el tramo
+      más cercano. Fuente: Visor_capas\\factibilidad_sistemas\\${esc(d.cod)}.</p>`;
+  const marcar = name => map.getLayer("det-hover") && map.setFilter("det-hover", ["all",
+    ["==", ["get", "sistema"], d.cod], ["==", ["get", "name"], name || ""]]);
+  el.querySelectorAll(".mFila").forEach(r => {
+    const f = r.dataset.t != null ? d.tramos[+r.dataset.t] : r.dataset.c != null ? d.conf[+r.dataset.c] : d.perf[+r.dataset.p];
+    const tramo = d.tramos[r.dataset.t != null ? +r.dataset.t : f.properties._ti];
+    r.onmouseenter = () => marcar(tramo?.properties.name);
+    r.onmouseleave = () => marcar(null);
+    r.onclick = ev => { if (!ev.target.closest("a")) irA(f); };
+  });
+}
+function metroEje(d, e) {
+  const est = (lista, ti) => lista.filter(f => f.properties._ti === ti);
+  return `<div class="mCorte"></div>` + e.tramos.map(f => {   // corte breve entre calles, sin rótulo
+    const p = f.properties, c = colorFact(p._fact), dim = factSel && p._fact !== factSel ? " dim" : "";
+    return `<div class="mFila mTramo${dim}${p._con ? " con" : ""}" data-t="${p._i}" style="--c:${c}" title="${esc(p.name)}">
+        <span class="mLin"></span><span class="mNom">${p._con ? "↔ " : ""}${esc(p.tramo || p.name)}</span>
+        <span class="mFac">${esc(p._fact)}</span><span class="mKm">${fmt(p.km_geom || 0)}</span></div>` +
+      est(d.conf, p._i).map(cf => `<div class="mFila mEst${dim}" data-c="${d.conf.indexOf(cf)}" style="--c:${c}">
+        <span class="mLin"><span class="badge conf">${cf.properties.n}</span></span>
+        <span class="mNom">${esc(cf.properties.descripcion || "Punto de conflicto")}</span></div>`).join("") +
+      est(d.perf, p._i).map(pf => `<div class="mFila mEst${dim}" data-p="${d.perf.indexOf(pf)}" style="--c:${c}">
+        <span class="mLin"><span class="badge perf">${esc(pf.properties.name)}</span></span>
+        <span class="mNom">Perfil ${esc(pf.properties.name)}${enlacesPerfil(pf.properties)}</span></div>`).join("");
+  }).join("");
+}
+// Perfiles de un pin: "Proyectado" si hay uno solo; "Proyectado A" y "B" si hay dos
+function perfilesPin(p) {
+  const a = linkSeguro(p.perfil_proy_A), b = linkSeguro(p.perfil_proy_B);
+  return [["Existente", linkSeguro(p.perfil_existente)],
+    ...(a && b ? [["Proyectado A", a], ["Proyectado B", b]] : [["Proyectado", a || b]])].filter(x => x[1]);
+}
+function enlacesPerfil(p) {
+  const l = perfilesPin(p);
+  return `<div class="enlaces">${l.length ? l.map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener"
+    title="Abrir en Streetmix">${t} ↗</a>`).join("") : `<span class="falta">sin enlaces</span>`}</div>`;
+}
+function pintarFactSel() {
+  if (!map.getLayer("det-tramos")) return;
+  const op = factSel ? ["case", ["==", ["get", "_fact"], factSel], 1, 0.15] : 1;
+  map.setPaintProperty("det-tramos", "line-opacity", op);
+  map.setPaintProperty("det-casing", "line-opacity", op);
+}
+// Lleva el mapa a un elemento (tramo o punto) y abre su ventana
+function irA(f) {
+  const g = f.geometry, punto = g.type === "Point";
+  let ll = g.coordinates;
+  if (!punto) {
+    const vs = []; (function w(c) { typeof c[0] === "number" ? vs.push(c) : c.forEach(w); })(g.coordinates);
+    ll = vs[Math.floor(vs.length / 2)];
+    map.fitBounds(bbox({ features: [f] }), { padding: 80, maxZoom: 17, duration: 700 });
+  } else map.flyTo({ center: ll, zoom: Math.max(map.getZoom(), 16.5), duration: 700 });
+  map.once("moveend", () => popup({ point: map.project(ll), lngLat: maplibregl.LngLat.convert(ll) }));
+}
+function htmlDet(id, p) {
+  const nom = detActual()?.nombre || p.sistema;
+  if (id === "det-tramos") return `<b>${esc(p.tramo || p.name)}</b>${tabla([["Sistema", nom],
+    ["Factibilidad", p.factibilidad || "Sin dato"], ["Largo", km2(p.km_geom)], ["Código", p.name]])}`;
+  if (id.startsWith("det-conf")) return `<b>Conflicto ${p.n}: ${esc(p.descripcion || "")}</b>${tabla([["Sistema", nom],
+    ["Tramo cercano", p._tramo]])}`;
+  // perfiles: mismas filas de la tabla, con el enlace a Streetmix como valor
+  const filas = [["Sistema", esc(nom)], ["Tramo cercano", esc(p._tramo)], ...perfilesPin(p).map(([t, u]) =>
+    [`Perfil ${t.toLowerCase()}`, `<a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">Abrir en Streetmix ↗</a>`])];
+  return `<b>Perfil ${esc(p.name)}</b><table>${filas.filter(r => r[1]).map(r =>
+    `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table>`;
+}
+
+// Capas del mapa de la vista de sistema (encima de todo; ocultas en la vista "Red")
+map.on("load", () => {
+  map.addSource("ref-fact_tramos", { type: "geojson", data: FT, generateId: true });
+  map.addSource("ref-fact_conflictos", { type: "geojson", data: FC });
+  map.addSource("ref-fact_perfiles", { type: "geojson", data: FP });
+  const capa = o => map.addLayer({ ...o, layout: { visibility: "none", ...(o.layout || {}) } });
+  const linea = { "line-cap": "round", "line-join": "round" };
+  const texto = { "text-size": 10, "text-allow-overlap": true, "text-ignore-placement": true,
+    "text-font": ["Montserrat Medium", "Open Sans Bold", "Noto Sans Regular"] };
+  capa({ id: "det-hover", type: "line", source: "ref-fact_tramos", layout: linea,
+    paint: { "line-color": "#ffd60a", "line-width": 16, "line-opacity": 0.85, "line-blur": 1 } });
+  capa({ id: "det-casing", type: "line", source: "ref-fact_tramos", layout: linea,
+    paint: { "line-color": "#fff", "line-width": 8.5 } });
+  capa({ id: "det-tramos", type: "line", source: "ref-fact_tramos", layout: linea,
+    paint: { "line-color": ["match", ["get", "_fact"], ...FACT.flat(), FACT_OTRO], "line-width": 5 } });
+  capa({ id: "det-conf", type: "circle", source: "ref-fact_conflictos",
+    paint: { "circle-color": ROJO_CONF, "circle-radius": 9, "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+  capa({ id: "det-conf-n", type: "symbol", source: "ref-fact_conflictos",
+    layout: { ...texto, "text-field": ["to-string", ["get", "n"]] }, paint: { "text-color": "#fff" } });
+  capa({ id: "det-perf", type: "circle", source: "ref-fact_perfiles",
+    paint: { "circle-color": "#111", "circle-radius": 9.5, "circle-stroke-color": "#fff", "circle-stroke-width": 2 } });
+  capa({ id: "det-perf-n", type: "symbol", source: "ref-fact_perfiles",
+    layout: { ...texto, "text-field": ["get", "name"] }, paint: { "text-color": "#fff" } });
+  for (const id of ["det-tramos", "det-conf", "det-perf"]) {
+    map.on("mouseenter", id, () => { if (!window.EDICION?.capa) map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", id, () => { if (!window.EDICION?.capa) map.getCanvas().style.cursor = ""; });
+  }
+  if (vista !== "red") aplicarVista(true);
+});
+aplicarVista(false);
+
 // ---------- Leyenda de categorías
 const TRAZO_SVG = { continuo: 'stroke-linecap="round"', guiones: 'stroke-dasharray="7 4"',
   puntos: 'stroke-linecap="round" stroke-dasharray="0 8"' };
@@ -1093,7 +1441,7 @@ function resaltar(f, cref, pop) {
   });
 }
 function popup(e) {
-  const capas = ["sis-sel", "sis-alt", "sis-pto", "br", "ex-act", "sis-otros", ...CAPAS_CLIC, "ex-base"]
+  const capas = ["det-perf", "det-conf", "det-tramos", "sis-sel", "sis-alt", "sis-pto", "br", "ex-act", "sis-otros", ...CAPAS_CLIC, "ex-base"]
     .filter(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") !== "none");
   const caja = [[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]];
   const f = map.queryRenderedFeatures(caja, { layers: capas })[0];
@@ -1101,7 +1449,9 @@ function popup(e) {
   const p = f.properties;
   let html;
   const cref = refDeCapa(f.layer.id);
-  if (cref) {
+  if (f.layer.id.startsWith("det-")) {
+    html = htmlDet(f.layer.id, p);
+  } else if (cref) {
     const [titulo, filas] = cref.popup(p);
     html = `<b>${tabla.esc(titulo)}</b>${tabla(filas)}`;
   } else if (f.layer.id.startsWith("sis")) {

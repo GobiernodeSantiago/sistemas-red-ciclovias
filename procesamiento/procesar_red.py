@@ -76,6 +76,15 @@ CAPAS_REFERENCIA = [
      "derivar": lambda g: derivar_siniestros(g),
      "campos": ["anio", "comuna", "tipo", "tipo_grupo", "causa", "lugar", "ubic", "severidad", "peso",
                 "fall", "grav", "meng", "leve"]},
+    # Factibilidad por Sistema: una subcarpeta por sistema en factibilidad_sistemas (NS, ...). "patron" junta
+    # todos los archivos que calcen y agrega el campo "sistema" con el nombre de la subcarpeta.
+    {"id": "fact_tramos", "patron": "factibilidad_sistemas/*/factibilidad_tramos_*.geojson",
+     "derivar": lambda g: derivar_fact_tramos(g), "campos": ["sistema", "name", "eje", "tramo", "factibilidad"]},
+    {"id": "fact_perfiles", "patron": "factibilidad_sistemas/*/pines_perfiles_*.geojson",
+     "derivar": lambda g: derivar_fact_perfiles(g),
+     "campos": ["sistema", "name", "perfil_existente", "perfil_proy_A", "perfil_proy_B"]},
+    {"id": "fact_conflictos", "patron": "factibilidad_sistemas/*/puntos_conflictos*.geojson",
+     "campos": ["sistema", "descripcion"]},
 ]
 
 # Colores y estilo por categoría de tramo (se asignan por coincidencia de texto en
@@ -231,10 +240,18 @@ def exportar_referencia(crs):
     """Capas de referencia -> data/capas.js (window.CAPAS = {id: GeoJSON})."""
     capas = {}
     for c in CAPAS_REFERENCIA:
-        if not Path(c["archivo"]).exists():
+        if c.get("patron"):   # varios archivos (uno por sistema) -> una capa con el campo "sistema"
+            archivos = sorted(ENTRADA.glob(c["patron"]))
+            if not archivos:
+                print(f"AVISO: ningún archivo calza con {c['patron']}, se omite la capa {c['id']}")
+                continue
+            g = gpd.GeoDataFrame(pd.concat([gpd.read_file(a).to_crs(crs).assign(sistema=a.parent.name)
+                                            for a in archivos], ignore_index=True), crs=crs)
+        elif not Path(c["archivo"]).exists():
             print(f"AVISO: no existe {c['archivo']}, se omite la capa {c['id']}")
             continue
-        g = gpd.read_file(c["archivo"]).to_crs(crs)
+        else:
+            g = gpd.read_file(c["archivo"]).to_crs(crs)
         g = g[g.geometry.notna() & ~g.geometry.is_empty].copy()
         if c.get("derivar"):
             g = c["derivar"](g)
@@ -318,6 +335,24 @@ def derivar_osm(g):
                             col("oneway").map({"yes": "Un sentido", "no": "Doble sentido"}))
     g["iluminada"] = col("lit").map({"yes": "Sí", "no": "No"})
     g["osm_id"] = g["@id"]
+    return g
+
+
+def derivar_fact_tramos(g):
+    """name = "<sistema>_<eje>_<tramo>" (ej. "NS_SD_Matta a Copiapo") -> campos eje y tramo."""
+    partes = g["name"].fillna("").str.split("_", n=2, expand=True).reindex(columns=[0, 1, 2])
+    g["eje"] = partes[1]
+    g["tramo"] = partes[2].fillna(g["name"])
+    g["factibilidad"] = g["factibilidad"].fillna("").str.strip()
+    return g
+
+
+def derivar_fact_perfiles(g):
+    """Enlaces de Streetmix: quita espacios y saltos de línea sobrantes."""
+    for k in ["perfil_existente", "perfil_proy_A", "perfil_proy_B"]:
+        if k not in g.columns:
+            g[k] = None
+        g[k] = g[k].where(g[k].notna(), None).map(lambda s: s.strip() or None if isinstance(s, str) else None)
     return g
 
 
