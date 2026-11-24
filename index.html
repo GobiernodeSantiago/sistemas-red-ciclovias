@@ -249,6 +249,8 @@
   #factLey .filaFact span, #factLey .filaFact b { font-size: 14px; }
   #factLey .filaFact i { width: 24px; height: 8px; border-radius: 4px; }
   #factLey .filaFact small { width: 42px; font-size: 12.5px; }
+  #factLey .defFact { margin: 2px 0 6px 30px; padding: 6px 10px; font-size: 12.5px; line-height: 1.4; color: var(--ink);
+    background: #f6f5f2; border-left: 4px solid var(--c); border-radius: 0 6px 6px 0; }
   .mCorte { height: 10px; }
   .mCorte:first-child { height: 2px; }
   .badge.mini { min-width: 16px; height: 16px; font-size: 9px; vertical-align: -3px; margin-left: 6px; }
@@ -1132,6 +1134,12 @@ const DETALLE = [   // cod = subcarpeta de factibilidad_sistemas; sistema = nomb
 ];
 const FACT = [["Existente", "#2a78d6"], ["En diseño", "#b48ee6"], ["Alta", "#0ca30c"], ["Media", "#fab219"], ["Baja", "#d03b3b"], ["Par vial", "#d4148c"]];
 const FACT_OTRO = "#a8a7a0", ROJO_CONF = "#d7191c";
+// Qué implica cada nivel de factibilidad (se muestra al hacer clic en la categoría del recuadro de km)
+const DEF_FACT = {
+  "Alta": "Viable ajustando anchos de pistas; usando platabandas disponibles y/o regulando los estacionamientos informales en las pistas",
+  "Media": "Eliminar estacionamientos; ajuste de anchos de pistas y/o pista ancha en vía unidireccional",
+  "Baja": "Eliminar 1 pista; zona compartida y eliminación de estacionamientos",
+};
 const colorFact = v => (FACT.find(x => x[0] === v) || [null, FACT_OTRO])[1];
 const VACIO = { type: "FeatureCollection", features: [] };
 const FT = REF.fact_tramos || VACIO, FC = REF.fact_conflictos || VACIO, FP = REF.fact_perfiles || VACIO;
@@ -1280,7 +1288,8 @@ function renderSis(d) {
       title="${esc(k)}: ${fmt(km[k])} km"></div>`).join("")}</div>
     ${cats.map(k => `<button class="filaFact" data-f="${esc(k)}" aria-pressed="${factSel === k}"><i style="background:${
       colorFact(k)}"></i><span>${esc(k)}${FACT.some(x => x[0] === k) ? "" : " <em>(categoría no estándar)</em>"}</span>
-      <b>${fmt(km[k])} km</b><small>${pct(k)} %</small></button>`).join("")}`;
+      <b>${fmt(km[k])} km</b><small>${pct(k)} %</small></button>${factSel === k && DEF_FACT[k] ?
+      `<p class="defFact" style="--c:${colorFact(k)}">${esc(DEF_FACT[k])}</p>` : ""}`).join("")}`;
   ley.querySelectorAll(".filaFact, .barraTipos div").forEach(b => b.onclick = () => {
     factSel = factSel === b.dataset.f ? null : b.dataset.f; renderSis(d); pintarFactSel();
   });
