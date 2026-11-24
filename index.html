@@ -205,6 +205,20 @@
   .pop table { border-collapse: collapse; margin-top: 4px; }
   .pop td { padding: 1px 8px 1px 0; vertical-align: top; }
   .pop td:first-child { color: var(--muted); }
+  /* Etapas del análisis (bajo el título): 1 evaluador de priorización (enlace) › 2 este visor */
+  .pasos { display: flex; align-items: center; gap: 6px; margin: 8px 0 14px; }
+  .paso { flex: 1; display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 8px; min-width: 0;
+    border: 1px solid var(--line); background: #fff; text-decoration: none; color: var(--ink); line-height: 1.2; }
+  .paso b { display: block; font-size: 11.5px; font-weight: 600; }
+  .paso small { display: block; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .paso b { white-space: nowrap; }
+  .paso .n { flex: none; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 10.5px; font-weight: 700; background: #e9e8e3; color: var(--ink-2); }
+  a.paso:hover { background: #f0f5fc; border-color: #c9dcf3; }
+  a.paso small { color: var(--accent); }
+  .paso.actual { background: #f6f5f2; }
+  .paso.actual .n { background: var(--ink); color: #fff; }
+  .pasos .flecha { color: var(--muted); font-size: 16px; }
   /* Pestañas de visualización, sobre el mapa (Red Sistemas | Sistema ...) */
   #centro { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
   #centro > #mapWrap { min-height: 0; }
@@ -294,6 +308,14 @@
     <button id="toggle">Ocultar panel</button>
     <img class="logo" src="img/logo_gobierno_santiago.svg" alt="Gobierno de Santiago" width="2916" height="740">
     <h1>Análisis de factibilidad de ejes priorizados</h1>
+    <nav class="pasos" aria-label="Etapas del análisis">
+      <a class="paso" href="https://ditdatos.gobiernosantiago.cl/evaluador/" target="_blank" rel="noopener"
+        title="Abrir el evaluador de ciclovías (priorización de ejes) en otra pestaña"><span class="n">1</span>
+        <span><b>Priorización de ejes</b><small>Ir al evaluador ↗</small></span></a>
+      <span class="flecha" aria-hidden="true">›</span>
+      <div class="paso actual" aria-current="step"><span class="n">2</span>
+        <span><b>Factibilidad</b><small>Este visor</small></span></div>
+    </nav>
 
     <div id="vistaRed">
     <p class="sub" id="subtitulo"></p>
