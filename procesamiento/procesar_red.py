@@ -31,7 +31,7 @@ from shapely import shortest_line
 # ---------------------------------------------------------------- CONFIGURACIÓN
 ENTRADA = Path(r"C:\Plan_Maestro\Visor_capas")
 SISTEMAS = ENTRADA / "sistemas_ciclovias_propuesta.geojson"
-EXISTENTES = ENTRADA / "ciclovias_existentes_jul26.geojson"
+EXISTENTES = ENTRADA / "ciclovias_existentes_nov26_PMC.geojson"
 CAMPO_SISTEMA = "Sistema"
 CAMPO_TIPO = "tipo"
 CAMPO_NOMBRE = "name"
@@ -78,9 +78,11 @@ CAPAS_REFERENCIA = [
                 "fall", "grav", "meng", "leve"]},
     # Factibilidad por Sistema: una subcarpeta por sistema en factibilidad_sistemas (NS, ...). "patron" junta
     # todos los archivos que calcen y agrega el campo "sistema" con el nombre de la subcarpeta.
-    {"id": "fact_tramos", "patron": "factibilidad_sistemas/*/factibilidad_tramos_*.geojson",
+    # "solo_cod": sólo el archivo terminado en _<COD> (ej. factibilidad_tramos_VM.geojson); se ignoran copias de
+    # trabajo como factibilidad_tramos_VM_kmz.geojson o _v2.
+    {"id": "fact_tramos", "patron": "factibilidad_sistemas/*/factibilidad_tramos_*.geojson", "solo_cod": True,
      "derivar": lambda g: derivar_fact_tramos(g), "campos": ["sistema", "name", "eje", "tramo", "factibilidad"]},
-    {"id": "fact_perfiles", "patron": "factibilidad_sistemas/*/pines_perfiles_*.geojson",
+    {"id": "fact_perfiles", "patron": "factibilidad_sistemas/*/pines_perfiles_*.geojson", "solo_cod": True,
      "derivar": lambda g: derivar_fact_perfiles(g),
      "campos": ["sistema", "name", "perfil_existente", "perfil_proy_A", "perfil_proy_B"]},
     {"id": "fact_conflictos", "patron": "factibilidad_sistemas/*/puntos_conflictos*.geojson",
@@ -242,6 +244,11 @@ def exportar_referencia(crs):
     for c in CAPAS_REFERENCIA:
         if c.get("patron"):   # varios archivos (uno por sistema) -> una capa con el campo "sistema"
             archivos = sorted(ENTRADA.glob(c["patron"]))
+            if c.get("solo_cod"):
+                otros = [a for a in archivos if not a.stem.endswith("_" + a.parent.name)]
+                if otros:
+                    print(f"  ({c['id']}: se ignoran copias de trabajo: {', '.join(a.name for a in otros)})")
+                archivos = [a for a in archivos if a not in otros]
             if not archivos:
                 print(f"AVISO: ningún archivo calza con {c['patron']}, se omite la capa {c['id']}")
                 continue

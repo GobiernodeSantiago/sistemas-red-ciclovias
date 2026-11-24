@@ -6,8 +6,8 @@
 <title>Análisis de factibilidad de ejes priorizados</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202611241535"></script>
-<script src="data/capas.js?v=202611241535"></script>
+<script src="data/datos.js?v=202611241804"></script>
+<script src="data/capas.js?v=202611241804"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -392,7 +392,8 @@
 
 <script>
 const D = window.DATOS;
-const RAMP = ["#184f95", "#2a78d6", "#5598e7", "#86b6ef", "#b7d3f6"];
+// Existentes activadas por el sistema: escala de gris grafito (más oscuro = más cerca), distinta del azul de existentes
+const RAMP = ["#222222", "#4d4d4d", "#787878", "#a0a0a0", "#c4c4c4"];
 const MODOS = { d: { min: 0, max: 10, step: 0.5, val: 2 }, h: { min: 1, max: 15, step: 1, val: 2 } };
 const estado = { sel: new Set(D.sistemas.filter(s => s.key !== "all").map(s => s.key)),   // al abrir: todos los sistemas
                 modo: "d", umbral: 2 };
@@ -512,7 +513,8 @@ const REF = window.CAPAS || {};
 const km2 = x => x == null || x === "" ? null : fmt(x, 2) + " km";
 const unir = (...a) => a.filter(x => x && x !== "s_i" && x !== "S_I" && x !== "?").join(" → ");
 const MORADO_GORE = "#5e3c6e";   // color común de los Ejes GORE (ciruela oscuro, distinto del lila de "Con/En diseño")
-const AZUL_EXISTENTES = "#5598e7", AZUL_EXISTENTES_OSCURO = "#86b6ef";   // red existente (línea fina) en mapas claros / oscuros
+// red existente: mismo azul y grosor que "Existente" en la factibilidad de los sistemas (mapas claros / oscuros)
+const AZUL_EXISTENTES = "#2a78d6", AZUL_EXISTENTES_OSCURO = "#5c9be6", ANCHO_EXISTENTES = 5;
 // Cada capa: fuente (id en capas.js), grupo del panel, tipo (line|circle|square), color (fijo o por categoría), popup
 const CAPAS_REF = [
   { id: "osm", fuente: "osm", grupo: "Análisis de red", nombre: "Ciclovías existentes (OSM)",
@@ -644,9 +646,9 @@ const GRUPOS_ABIERTOS = ["Análisis de red", "Plan Maestro de Ciclovías"];
 const grupoHTML = (g, cuerpo) => `<details class="grp" ${GRUPOS_ABIERTOS.includes(g) ? "open" : ""}>
   <summary>${g}<span class="activas"></span></summary>${cuerpo}</details>`;
 document.getElementById("capas").innerHTML = grupoHTML("Análisis de red", `
-  <label><input type="checkbox" id="cAct" checked>${muestra("#2a78d6", 3)} Existentes activadas por el sistema</label>
-  <div class="subley on"><span>Azul más oscuro = más cerca del sistema (ver deslizador del panel izquierdo)</span></div>
-  <label><input type="checkbox" id="cBase">${muestra(AZUL_EXISTENTES, 1.2)} Ciclovías existentes
+  <label><input type="checkbox" id="cAct" checked>${muestra(RAMP[1], 3)} Existentes activadas por el sistema</label>
+  <div class="subley on"><span>Gris más oscuro = más cerca del sistema (ver deslizador del panel izquierdo)</span></div>
+  <label><input type="checkbox" id="cBase">${muestra(AZUL_EXISTENTES, ANCHO_EXISTENTES)} Ciclovías existentes
     <small>${fmt(D.red_existente.km, 0)} km</small></label>
   <label><input type="checkbox" id="cOtros">${muestra("#b5b4ae", 2.5)} Otros sistemas (tenue)</label>
   <label><input type="checkbox" id="cBrechas">${muestra("#0b0b0b", 2, [1, 1.5])} Brechas de conexión</label>
@@ -768,8 +770,8 @@ map.on("load", () => {
   map.addSource("br", { type: "geojson", data: D.geo.brechas });
 
   map.addLayer({ id: "ex-base", type: "line", source: "ex",
-    layout: { visibility: document.getElementById("cBase").checked ? "visible" : "none" },
-    paint: { "line-color": AZUL_EXISTENTES, "line-width": 1.2, "line-opacity": 0.85 } });
+    layout: { visibility: document.getElementById("cBase").checked ? "visible" : "none", "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": AZUL_EXISTENTES, "line-width": ANCHO_EXISTENTES } });
   map.addLayer({ id: "sis-otros", type: "line", source: "sis",
     paint: { "line-color": "#6e6d68", "line-width": 2.5, "line-opacity": 0.35 } });
   for (const c of CAPAS_REF) {   // líneas de referencia: debajo de la red activada y los sistemas
@@ -1170,7 +1172,7 @@ const FACT_OTRO = "#a8a7a0", ROJO_CONF = "#d7191c";
 const DEF_FACT = {
   "Alta": "Viable ajustando anchos de pistas; usando platabandas disponibles y/o regulando los estacionamientos informales en las pistas",
   "Media": "Eliminar estacionamientos; ajuste de anchos de pistas y/o pista ancha en vía unidireccional",
-  "Baja": "Eliminar 1 pista; zona compartida y eliminación de estacionamientos",
+  "Baja": "Eliminar 1 pista; zona de tránsito calmado y eliminación de estacionamientos",
 };
 const colorFact = v => (FACT.find(x => x[0] === v) || [null, FACT_OTRO])[1];
 const VACIO = { type: "FeatureCollection", features: [] };
