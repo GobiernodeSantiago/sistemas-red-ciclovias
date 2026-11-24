@@ -6,8 +6,8 @@
 <title>Análisis de factibilidad de ejes priorizados</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202611241233"></script>
-<script src="data/capas.js?v=202611241233"></script>
+<script src="data/datos.js?v=202611241535"></script>
+<script src="data/capas.js?v=202611241535"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -257,7 +257,17 @@
   /* va dentro de los controles de abajo a la izquierda del mapa: se apila con el perfil de elevación, sin superponerse */
   #factLey { width: 360px; padding: 14px 16px 12px; box-shadow: 0 2px 14px rgba(0,0,0,.2); margin: 0 0 12px 12px; }
   #factLey[hidden] { display: none; }
-  #factLey > span { font-size: 13px; color: var(--ink-2); }
+  #factLey .factCab { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+  #factLey .factCab > span { flex: 1; font-size: 13px; color: var(--ink-2); }
+  #factLey .verTodas { flex: none; border: 1px solid #c9c7c0; background: #fff; border-radius: 13px; padding: 3px 11px;
+    font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; }
+  #factLey .verTodas:hover { background: #f0efec; border-color: #9c9a93; }
+  #factLey .filaFact u { width: 14px; flex: none; text-decoration: none; text-align: center; font-size: 12px;
+    color: var(--muted); visibility: hidden; }
+  #factLey .filaFact[aria-pressed="true"] u { visibility: visible; }
+  #factLey .filaFact[aria-pressed="true"]:hover u { color: var(--ink); }
+  #factLey.conSel .filaFact[aria-pressed="false"] { opacity: .45; }
+  #factLey.conSel .filaFact[aria-pressed="false"]:hover { opacity: 1; }
   #factLey .barraTipos { height: 16px; margin: 10px 0 8px; gap: 3px; }
   #factLey .filaFact { font-size: 14px; padding: 5px 6px; margin: 0 -6px; }
   #factLey .filaFact span, #factLey .filaFact b { font-size: 14px; }
@@ -1324,16 +1334,19 @@ function renderSis(d) {
   const pct = k => fmt(km[k] / total * 100, 0);
   // km por factibilidad: recuadro fijo sobre el mapa (esquina inferior izquierda)
   const ley = document.getElementById("factLey");
-  ley.innerHTML = `<span>Km por factibilidad · clic para destacar en el mapa</span>
+  ley.classList.toggle("conSel", !!factSel);
+  ley.innerHTML = `<div class="factCab"><span>Km por factibilidad · ${factSel ? "mostrando sólo una categoría" :
+      "clic para destacar en el mapa"}</span>${factSel ? `<button class="verTodas" title="Quitar la selección (Esc)">✕ Ver todas</button>` : ""}</div>
     <div class="barraTipos">${cats.map(k => `<div data-f="${esc(k)}" style="flex:${km[k]};background:${colorFact(k)}"
       title="${esc(k)}: ${fmt(km[k])} km"></div>`).join("")}</div>
-    ${cats.map(k => `<button class="filaFact" data-f="${esc(k)}" aria-pressed="${factSel === k}"><i style="background:${
+    ${cats.map(k => `<button class="filaFact" data-f="${esc(k)}" aria-pressed="${factSel === k}"
+      title="${factSel === k ? "Clic para quitar la selección" : "Clic para destacar en el mapa"}"><i style="background:${
       colorFact(k)}"></i><span>${esc(k)}${FACT.some(x => x[0] === k) ? "" : " <em>(categoría no estándar)</em>"}</span>
-      <b>${fmt(km[k])} km</b><small>${pct(k)} %</small></button>${factSel === k && DEF_FACT[k] ?
+      <b>${fmt(km[k])} km</b><small>${pct(k)} %</small><u aria-hidden="true">✕</u></button>${factSel === k && DEF_FACT[k] ?
       `<p class="defFact" style="--c:${colorFact(k)}">${esc(DEF_FACT[k])}</p>` : ""}`).join("")}`;
-  ley.querySelectorAll(".filaFact, .barraTipos div").forEach(b => b.onclick = () => {
-    factSel = factSel === b.dataset.f ? null : b.dataset.f; renderSis(d); pintarFactSel();
-  });
+  ley.querySelectorAll(".filaFact, .barraTipos div").forEach(b => b.onclick = () =>
+    elegirFact(factSel === b.dataset.f ? null : b.dataset.f));
+  ley.querySelector(".verTodas")?.addEventListener("click", () => elegirFact(null));
   ley.querySelectorAll(".barraTipos div").forEach(b => b.classList.toggle("dim", !!factSel && b.dataset.f !== factSel));
   el.innerHTML = `<h2>Sistema ${esc(d.nombre)}</h2>
     <div class="kpis">
@@ -1381,6 +1394,13 @@ function enlacesPerfil(p) {
   return `<div class="enlaces">${l.length ? l.map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener"
     title="Abrir en Streetmix">${t} ↗</a>`).join("") : `<span class="falta">sin enlaces</span>`}</div>`;
 }
+// Elegir / quitar la categoría destacada (recuadro de km y trazado del mapa)
+function elegirFact(k) {
+  const d = detActual();
+  if (!d || factSel === k) return;
+  factSel = k; renderSis(d); pintarFactSel();
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape" && factSel) elegirFact(null); });
 function pintarFactSel() {
   if (!map.getLayer("det-tramos")) return;
   const op = factSel ? ["case", ["==", ["get", "_fact"], factSel], 1, 0.15] : 1;
@@ -1495,7 +1515,7 @@ function popup(e) {
     .filter(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") !== "none");
   const caja = [[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]];
   const f = map.queryRenderedFeatures(caja, { layers: capas })[0];
-  if (!f) return;
+  if (!f) { if (factSel) elegirFact(null); return; }   // clic en un lugar vacío: vuelve a mostrar todas las categorías
   const p = f.properties;
   let html;
   const cref = refDeCapa(f.layer.id);

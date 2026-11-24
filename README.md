@@ -41,7 +41,7 @@ conflicto y los pines de perfiles (enlaces a Streetmix). Los datos están en
 
 | Archivo | Campos |
 |---|---|
-| `factibilidad_tramos_<COD>.geojson` | `name` = `<COD>_<eje>_<tramo>` (ej. `NS_SD_Matta a Copiapo`), `factibilidad` (Existente, En diseño, Alta, Media, Baja, Par vial) |
+| `factibilidad_tramos_<COD>.geojson` | `name` = `<COD>_<eje>_<tramo>` (ej. `NS_SD_Matta a Copiapo`), `factibilidad` (Existente, En diseño, Alta, Media, Baja, Par vial). Si `name` no trae el prefijo `<COD>_` (ej. VM exportado de KMZ), el eje se toma de la última carpeta de `folders` («Vicuna Mackenna; Pio Nono» → Pio Nono) |
 | `puntos_conflictos*.geojson` | `descripcion` |
 | `pines_perfiles_<COD>.geojson` | `name` (n° de pin), `perfil_existente`, `perfil_proy_A`, `perfil_proy_B` (enlaces https) |
 

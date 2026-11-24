@@ -339,10 +339,16 @@ def derivar_osm(g):
 
 
 def derivar_fact_tramos(g):
-    """name = "<sistema>_<eje>_<tramo>" (ej. "NS_SD_Matta a Copiapo") -> campos eje y tramo."""
-    partes = g["name"].fillna("").str.split("_", n=2, expand=True).reindex(columns=[0, 1, 2])
-    g["eje"] = partes[1]
-    g["tramo"] = partes[2].fillna(g["name"])
+    """name = "<sistema>_<eje>_<tramo>" (ej. "NS_SD_Matta a Copiapo") -> campos eje y tramo.
+    Si name no trae el prefijo del sistema (ej. VM, exportado de KMZ), el eje sale de la última carpeta de
+    "folders" ("Vicuna Mackenna; Pio Nono" -> "Pio Nono") y el tramo es el name completo."""
+    nombre = g["name"].fillna("").astype(str).str.strip()
+    partes = nombre.str.split("_", n=2, expand=True).reindex(columns=[0, 1, 2])
+    con_codigo = partes[0].eq(g["sistema"]) & partes[2].notna()
+    carpeta = g["folders"].fillna("").astype(str) if "folders" in g.columns else pd.Series("", index=g.index)
+    eje_carpeta = carpeta.str.split(";").map(lambda xs: xs[-1].strip() if len(xs) > 1 else None)
+    g["eje"] = partes[1].where(con_codigo, eje_carpeta)
+    g["tramo"] = partes[2].where(con_codigo, nombre)
     g["factibilidad"] = g["factibilidad"].fillna("").str.strip()
     return g
 
