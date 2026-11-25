@@ -382,6 +382,8 @@ def derivar_fact_perfiles(g):
     num = número del pin para el círculo del mapa ("01"); titulo = "Perfil 01 · <calle>".
     Sirve para name = "01" (NS) o "Perfil 1 Providencia" (VM)."""
     import re
+    if "perfil_proy" in g.columns:   # un solo proyectado con el nombre corto (ej. Bonilla)
+        g["perfil_proy_A"] = g["perfil_proy_A"].fillna(g["perfil_proy"]) if "perfil_proy_A" in g.columns else g["perfil_proy"]
     for k in ["perfil_existente", "perfil_proy_A", "perfil_proy_B"]:
         if k not in g.columns:
             g[k] = None
