@@ -42,7 +42,7 @@ conflicto y los pines de perfiles (enlaces a Streetmix). Los datos están en
 | Archivo | Campos |
 |---|---|
 | `factibilidad_tramos_<COD>.geojson` | `name` = `<COD>_<eje>_<tramo>` (ej. `NS_SD_Matta a Copiapo`), `factibilidad` (Existente, En diseño, Alta, Media, Baja, Par vial). También sirve `<EJE>_<tramo>` (ej. Bonilla: `GOB_Serrano a La Estrella`). Si `name` no trae prefijo (ej. VM exportado de KMZ), el eje se toma de la última carpeta de `folders` («Vicuna Mackenna; Pio Nono» → Pio Nono) |
-| `puntos_conflictos*.geojson` | `descripcion` |
+| `puntos_conflictos*.geojson` o `puntos_conflictivos_*.geojson` | `descripcion` |
 | `pines_perfiles_<COD>.geojson` | `name` (n° de pin), `perfil_existente`, `perfil_proy_A`, `perfil_proy_B` (enlaces https) |
 | `emplazamiento_VM.geojson` (sólo VM) | Trazado completo del sistema (KMZ): `name`, `folders`, `factibilidadt`. Otra geometría del mismo sistema: se pinta con los colores de factibilidad, sólo en la pestaña Vicuña Mackenna; en la leyenda se prenden y apagan por separado el emplazamiento y los tramos del sistema |
 

@@ -88,7 +88,7 @@ CAPAS_REFERENCIA = [
     # Emplazamiento de Vicuña Mackenna (trazado completo del KMZ): sólo se muestra en la pestaña VM
     {"id": "emplaz_VM", "archivo": ENTRADA / "factibilidad_sistemas" / "VM" / "emplazamiento_VM.geojson",
      "derivar": lambda g: derivar_emplazamiento(g), "campos": ["name", "eje", "factibilidad"]},
-    {"id": "fact_conflictos", "patron": "factibilidad_sistemas/*/puntos_conflictos*.geojson",
+    {"id": "fact_conflictos", "patron": "factibilidad_sistemas/*/puntos_conflict*.geojson",
      "campos": ["sistema", "descripcion"]},
 ]
 
