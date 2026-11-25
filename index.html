@@ -291,6 +291,12 @@
   .kpi.sisOn[aria-pressed="false"] b, .kpi.sisOn[aria-pressed="false"] span { opacity: .45; }
   .kpi.sisOn[aria-pressed="false"] i { background: #fff; border-color: #9c9a93; }
   .kpi.sisOn[aria-pressed="false"] i::after { display: none; }
+  #kmNuevos { margin: 8px 0 4px; }
+  #kmNuevos .knLista { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+  #kmNuevos .knFila { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 1.5px 0; }
+  #kmNuevos .knFila i { width: 18px; height: 6px; border-radius: 3px; flex: none; }
+  #kmNuevos .knFila span { flex: 1; display: inline; font-size: 12.5px; color: var(--ink); }
+  #kmNuevos .knFila em { font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; }
   .mSis { margin: 16px 0 2px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700;
     color: var(--ink); }
   .mEje { display: flex; align-items: center; gap: 8px; padding: 12px 0 4px; font-size: 11px; color: var(--ink-2); }
@@ -1399,6 +1405,7 @@ function renderSis(d) {
         <span>${esc(s.nombre)} (${s.tramos.length} tramos)</span></button>`).join("") : ""}
     </div>
     ${d.partes ? `<p class="ayuda" style="margin:6px 0 0">Clic en un sistema para prenderlo o apagarlo en el mapa.</p>` : ""}
+    ${kmEjesNuevos(d, subs)}
     <h2>Recorrido de norte a sur</h2>
     <p class="ayuda" style="margin:-4px 0 6px"><span class="badge conf mini">1</span> conflicto
       <span class="badge perf mini">01</span> perfil · clic en una fila para verla en el mapa</p>
@@ -1421,6 +1428,19 @@ function renderSis(d) {
     sisApagados.has(c) ? sisApagados.delete(c) : sisApagados.add(c);
     renderSis(d); filtrarDet(d);
   });
+}
+// Recuadro del panel derecho: km de ejes nuevos (factibilidad Alta, Media y Baja) de los sistemas prendidos
+const NUEVOS = ["Alta", "Media", "Baja"];
+function kmEjesNuevos(d, subs) {
+  const kmNuevo = fs => fs.reduce((a, f) => a + (NUEVOS.includes(f.properties._fact) ? f.properties.km_geom || 0 : 0), 0);
+  const tramos = subs.flatMap(s => s.tramos);
+  const porCat = NUEVOS.map(k => [k, tramos.reduce((a, f) => a + (f.properties._fact === k ? f.properties.km_geom || 0 : 0), 0)]);
+  const fila = (ico, nom, km) => `<div class="knFila">${ico}<span>${nom}</span><em>${fmt(km)} km</em></div>`;
+  return `<div id="kmNuevos" class="kpi"><b>${fmt(kmNuevo(tramos))} km</b>
+    <span>de ejes nuevos (factibilidad Alta, Media y Baja)${d.partes ? " · sistemas prendidos" : ""}</span>
+    <div class="knLista">${porCat.map(([k, km]) => fila(`<i style="background:${colorFact(k)}"></i>`, k, km)).join("")}</div>
+    ${d.partes && subs.length > 1 ? `<div class="knLista">${subs.map(s => fila("<i></i>", esc(s.nombre),
+      kmNuevo(s.tramos))).join("")}</div>` : ""}</div>`;
 }
 function metroEje(d, e) {
   const est = (lista, ti) => lista.filter(f => f.properties._ti === ti);
