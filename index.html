@@ -6,8 +6,8 @@
 <title>Análisis de factibilidad de ejes priorizados</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202611241851"></script>
-<script src="data/capas.js?v=202611241851"></script>
+<script src="data/datos.js?v=202611251010"></script>
+<script src="data/capas.js?v=202611251010"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -297,6 +297,9 @@
   #kmNuevos .knFila i { width: 18px; height: 6px; border-radius: 3px; flex: none; }
   #kmNuevos .knFila span { flex: 1; display: inline; font-size: 12.5px; color: var(--ink); }
   #kmNuevos .knFila em { font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lEmplaz { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .lEmplaz label.ley { cursor: pointer; align-items: flex-start; }
+  .lEmplaz input { margin: 2px 2px 0 0; }
   .mSis { margin: 16px 0 2px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700;
     color: var(--ink); }
   .mEje { display: flex; align-items: center; gap: 8px; padding: 12px 0 4px; font-size: 11px; color: var(--ink-2); }
@@ -1270,6 +1273,10 @@ DETALLE.filter(d => d.partes).forEach(d => {
   d.conf = d.subs.flatMap(s => s.conf);
   d.perf = d.subs.flatMap(s => s.perf);
 });
+// Emplazamiento (trazado completo del KMZ) de un sistema: REF.emplaz_<cod>; sólo en la pestaña de ese sistema
+DETALLE.filter(d => !d.partes && REF["emplaz_" + d.cod]).forEach(d =>
+  d.emplaz = REF["emplaz_" + d.cod].features.map(f => ({ ...f, properties: { ...f.properties, sistema: d.cod } })));
+let verEmplaz = true, verTramosSis = true;   // capas del sistema que se prenden/apagan (pestañas con emplazamiento)
 const detActual = () => DETALLE.find(x => x.cod === vista);
 const sisApagados = new Set();   // vista combinada: sistemas apagados con su interruptor
 const subsDe = d => d.subs ? d.subs.filter(s => !sisApagados.has(s.cod)) : [d];
@@ -1326,7 +1333,7 @@ function aplicarVista(encuadrar) {
   if (d) { renderSis(d); document.getElementById("cmpPanel").hidden = true; }
   if (!map.getLayer("det-tramos")) return;   // el mapa aún no termina de cargar: se aplica en su "load"
   if (!d) {
-    CAPAS_DET.forEach(id => vis(id, false));
+    CAPAS_DET.forEach(id => vis(id, false)); vis("det-emplaz", false); vis("det-emplaz-casing", false);
     const act = document.getElementById("cAct").checked;
     vis("ex-act", act); vis("ex-act-casing", act); vis("br", document.getElementById("cBrechas").checked);
     verSistemas(); render(encuadrar);
@@ -1335,6 +1342,12 @@ function aplicarVista(encuadrar) {
   CAPAS_RED.forEach(id => vis(id, false));
   filtrarDet(d);
   CAPAS_DET.forEach(id => vis(id, true));
+  if (map.getLayer("det-emplaz")) {
+    ["det-emplaz", "det-emplaz-casing"].forEach(id => {
+      map.setFilter(id, ["==", ["get", "sistema"], d.emplaz ? d.cod : ""]); vis(id, !!d.emplaz && verEmplaz);
+    });
+    if (d.emplaz && !verTramosSis) ["det-tramos", "det-casing"].forEach(id => vis(id, false));
+  }
   pintarFactSel();
   if (encuadrar) {
     const fs = d.tramos.length ? d.tramos : D.geo.sistemas.features.filter(f => f.properties.skey === d.skey);
@@ -1350,15 +1363,28 @@ function leyendaSis(d) {
     stroke-width="2"/><text x="17" y="13.5" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff"
     font-family="system-ui, sans-serif">${txt}</text></svg>`;
   const item = (sim, nom, def) => `<div class="ley">${sim}<div><b>${nom}</b>${def ? `<span class="def">${def}</span>` : ""}</div></div>`;
-  const usadas = new Set(d.tramos.map(f => f.properties._fact));
+  const usadas = new Set([...d.tramos.map(f => f.properties._fact),   // incluye las del emplazamiento
+    ...(d.emplaz || []).map(f => f.properties.factibilidad || "Sin dato")]);
   const cats = FACT.filter(([k]) => usadas.has(k)).concat([...usadas].filter(k => !FACT.some(x => x[0] === k)).map(k => [k, FACT_OTRO]));
   document.getElementById("leySis").innerHTML = d.tramos.length ?
     `<p class="ayuda" style="margin:2px 0 4px">Tramos de los ejes según factibilidad</p>` +
     cats.map(([k, c]) => item(linea(c), esc(k))).join("") +
     item(circulo(ROJO_CONF, "1"), "Punto de conflicto", "Numerado en el orden del recorrido de norte a sur" +
       (d.partes ? " (cada sistema por separado)" : "")) +
-    item(circulo("#111", "01"), "Pin de perfil de calle", "Clic para abrir los perfiles existente y proyectado en Streetmix") :
+    item(circulo("#111", "01"), "Pin de perfil de calle", "Clic para abrir los perfiles existente y proyectado en Streetmix") +
+    (d.emplaz ? `<div class="lEmplaz"><p class="ayuda" style="margin:0 0 2px">Capas del sistema (mismos colores de
+      factibilidad, distinta geometría)</p>
+      <label class="ley"><input type="checkbox" id="cTramosSis" ${verTramosSis ? "checked" : ""}><div><b>Sistema
+        ${esc(d.nombre)}</b><span class="def">Tramos del análisis de factibilidad</span></div></label>
+      <label class="ley"><input type="checkbox" id="cEmplaz" ${verEmplaz ? "checked" : ""}><div><b>Emplazamiento</b>
+        <span class="def">Trazado completo del sistema (KMZ)</span></div></label></div>` : "") :
     `<p class="ayuda">Este sistema aún no tiene análisis de factibilidad.</p>`;
+  document.getElementById("cEmplaz")?.addEventListener("change", e => {
+    verEmplaz = e.target.checked; ["det-emplaz", "det-emplaz-casing"].forEach(id => vis(id, verEmplaz));
+  });
+  document.getElementById("cTramosSis")?.addEventListener("change", e => {
+    verTramosSis = e.target.checked; ["det-tramos", "det-casing"].forEach(id => vis(id, verTramosSis));
+  });
 }
 
 // Panel izquierdo de la vista de sistema
@@ -1480,6 +1506,11 @@ function pintarFactSel() {
   const op = factSel ? ["case", ["==", ["get", "_fact"], factSel], 1, 0.15] : 1;
   map.setPaintProperty("det-tramos", "line-opacity", op);
   map.setPaintProperty("det-casing", "line-opacity", op);
+  if (map.getLayer("det-emplaz")) {   // el emplazamiento también se destaca por categoría
+    const opE = factSel ? ["case", ["==", ["get", "factibilidad"], factSel], 1, 0.15] : 1;
+    map.setPaintProperty("det-emplaz", "line-opacity", opE);
+    map.setPaintProperty("det-emplaz-casing", "line-opacity", opE);
+  }
 }
 // Lleva el mapa a un elemento (tramo o punto) y abre su ventana
 function irA(f) {
@@ -1494,6 +1525,8 @@ function irA(f) {
 }
 function htmlDet(id, p) {
   const nom = DETALLE.find(x => x.cod === p.sistema)?.nombre || p.sistema;
+  if (id === "det-emplaz") return `<b>${esc(p.name || "Tramo")}</b>${tabla([["Capa", "Emplazamiento"], ["Sistema", nom],
+    ["Eje", p.eje], ["Factibilidad", p.factibilidad], ["Largo", km2(p.km_geom)]])}`;
   if (id === "det-tramos") return `<b>${esc(p.tramo || p.name)}</b>${tabla([["Sistema", nom],
     ["Factibilidad", p.factibilidad || "Sin dato"], ["Largo", km2(p.km_geom)], ["Código", p.name]])}`;
   if (id.startsWith("det-conf")) return `<b>Conflicto ${p.n}: ${esc(p.descripcion || "")}</b>${tabla([["Sistema", nom],
@@ -1514,6 +1547,13 @@ map.on("load", () => {
   const linea = { "line-cap": "round", "line-join": "round" };
   const texto = { "text-size": 10, "text-allow-overlap": true, "text-ignore-placement": true,
     "text-font": ["Montserrat Medium", "Open Sans Bold", "Noto Sans Regular"] };
+  map.addSource("ref-emplaz", { type: "geojson",
+    data: { type: "FeatureCollection", features: DETALLE.flatMap(d => d.emplaz || []) } });
+  // emplazamiento: mismos colores que los tramos (línea más delgada) de factibilidad (otra geometría del mismo sistema)
+  capa({ id: "det-emplaz-casing", type: "line", source: "ref-emplaz", layout: linea,
+    paint: { "line-color": "#fff", "line-width": 5.5 } });
+  capa({ id: "det-emplaz", type: "line", source: "ref-emplaz", layout: linea,
+    paint: { "line-color": ["match", ["get", "factibilidad"], ...FACT.flat(), FACT_OTRO], "line-width": 3 } });
   capa({ id: "det-hover", type: "line", source: "ref-fact_tramos", layout: linea,
     paint: { "line-color": "#ffd60a", "line-width": 16, "line-opacity": 0.85, "line-blur": 1 } });
   capa({ id: "det-casing", type: "line", source: "ref-fact_tramos", layout: linea,
@@ -1585,7 +1625,7 @@ function resaltar(f, cref, pop) {
   });
 }
 function popup(e) {
-  const capas = ["det-perf", "det-conf", "det-tramos", "sis-sel", "sis-alt", "sis-pto", "br", "ex-act", "sis-otros", ...CAPAS_CLIC, "ex-base"]
+  const capas = ["det-perf", "det-conf", "det-tramos", "det-emplaz", "sis-sel", "sis-alt", "sis-pto", "br", "ex-act", "sis-otros", ...CAPAS_CLIC, "ex-base"]
     .filter(id => map.getLayer(id) && map.getLayoutProperty(id, "visibility") !== "none");
   const caja = [[e.point.x - 4, e.point.y - 4], [e.point.x + 4, e.point.y + 4]];
   const f = map.queryRenderedFeatures(caja, { layers: capas })[0];

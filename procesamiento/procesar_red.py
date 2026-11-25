@@ -85,6 +85,9 @@ CAPAS_REFERENCIA = [
     {"id": "fact_perfiles", "patron": "factibilidad_sistemas/*/pines_perfiles_*.geojson", "solo_cod": True,
      "derivar": lambda g: derivar_fact_perfiles(g),
      "campos": ["sistema", "name", "num", "titulo", "perfil_existente", "perfil_proy_A", "perfil_proy_B"]},
+    # Emplazamiento de Vicuña Mackenna (trazado completo del KMZ): sólo se muestra en la pestaña VM
+    {"id": "emplaz_VM", "archivo": ENTRADA / "factibilidad_sistemas" / "VM" / "emplazamiento_VM.geojson",
+     "derivar": lambda g: derivar_emplazamiento(g), "campos": ["name", "eje", "factibilidad"]},
     {"id": "fact_conflictos", "patron": "factibilidad_sistemas/*/puntos_conflictos*.geojson",
      "campos": ["sistema", "descripcion"]},
 ]
@@ -258,7 +261,7 @@ def exportar_referencia(crs):
             print(f"AVISO: no existe {c['archivo']}, se omite la capa {c['id']}")
             continue
         else:
-            g = gpd.read_file(c["archivo"]).to_crs(crs)
+            g = gpd.read_file(c["archivo"], on_invalid="ignore").to_crs(crs)   # omite líneas de un solo punto
         g = g[g.geometry.notna() & ~g.geometry.is_empty].copy()
         if c.get("derivar"):
             g = c["derivar"](g)
@@ -362,6 +365,15 @@ def derivar_fact_tramos(g):
     g.loc[solo_eje, "eje"] = corto.loc[solo_eje, 0]
     g.loc[solo_eje, "tramo"] = corto.loc[solo_eje, 1].str.strip()
     g["factibilidad"] = g["factibilidad"].fillna("").str.strip()
+    return g
+
+
+def derivar_emplazamiento(g):
+    """Eje desde "folders"; factibilidad desde "factibilidadt" (corrige "En dise�o" -> "En diseño")."""
+    carpeta = g["folders"].fillna("").astype(str) if "folders" in g.columns else pd.Series("", index=g.index)
+    g["eje"] = carpeta.str.split(";").map(lambda xs: xs[-1].strip() if len(xs) > 1 else None)
+    col = "factibilidad" if "factibilidad" in g.columns else "factibilidadt"
+    g["factibilidad"] = g[col].fillna("").astype(str).str.strip().str.replace("dise�o", "diseño", regex=False)
     return g
 
 
