@@ -259,6 +259,8 @@
   #factLey[hidden] { display: none; }
   #factLey.plegado { width: auto; padding: 8px 10px 8px 14px; }
   #factLey.plegado .factCuerpo { display: none; }
+  #factLey .factSub { font-size: 11px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .03em;
+    margin: 10px 0 2px; }
   #factLey.plegado .factCab > span b { display: inline; font-size: 13px; color: var(--ink); font-weight: 600; }
   #factLey .plegar { flex: none; width: 28px; height: 26px; border: 1px solid #c9c7c0; background: #fff; border-radius: 6px;
     font-size: 14px; line-height: 1; color: var(--ink); cursor: pointer; }
@@ -298,6 +300,11 @@
   .kpi.sisOn[aria-pressed="false"] i { background: #fff; border-color: #9c9a93; }
   .kpi.sisOn[aria-pressed="false"] i::after { display: none; }
   #kmNuevos { margin: 8px 0 4px; }
+  #kmNuevos .knSub { font-size: 11px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 3px; }
+  #kmNuevos .knLista:has(.knSub) { border-top: 0; padding-top: 0; }
+  #kmNuevos .knCab { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  #kmNuevos .knCosto { display: block; text-align: right; font-size: 15px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.25; margin-top: 2px; }
+  #kmNuevos .knCosto small { display: block; font-size: 10.5px; font-weight: 400; color: var(--ink-2); }
   #kmNuevos .knLista { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
   #kmNuevos .knFila { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 1.5px 0; }
   #kmNuevos .knFila i { width: 18px; height: 6px; border-radius: 3px; flex: none; }
@@ -1434,7 +1441,7 @@ function renderSis(d) {
       factPlegado ? "▴" : "▾"}</button></div>
     <div class="factCuerpo"><div class="barraTipos">${cats.map(k => `<div data-f="${esc(k)}" style="flex:${km[k]};background:${colorFact(k)}"
       title="${esc(k)}: ${fmt(km[k])} km"></div>`).join("")}</div>
-    ${cats.map(k => `<button class="filaFact" data-f="${esc(k)}" aria-pressed="${factSel === k}"
+    ${cats.map(k => `${k === cats.find(c => NUEVOS.includes(c)) ? `<div class="factSub">Tramos nuevos según factibilidad</div>` : ""}<button class="filaFact" data-f="${esc(k)}" aria-pressed="${factSel === k}"
       title="${factSel === k ? "Clic para quitar la selección" : "Clic para destacar en el mapa"}"><i style="background:${
       colorFact(k)}"></i><span>${esc(k)}${FACT.some(x => x[0] === k) ? "" : " <em>(categoría no estándar)</em>"}</span>
       <b>${fmt(km[k])} km</b><small>${pct(k)} %</small><u aria-hidden="true">✕</u></button>${factSel === k && DEF_FACT[k] ?
@@ -1483,14 +1490,18 @@ function renderSis(d) {
 }
 // Recuadro del panel derecho: km de ejes nuevos (factibilidad Alta, Media y Baja) de los sistemas prendidos
 const NUEVOS = ["Alta", "Media", "Baja"];
+const COSTO_KM_MM = 22;   // costo referencial por km de ciclovía nueva, en millones de pesos chilenos
+const fmtCosto = km => "$" + Math.round(km * COSTO_KM_MM).toLocaleString("es-CL") + " millones";
 function kmEjesNuevos(d, subs) {
   const kmNuevo = fs => fs.reduce((a, f) => a + (NUEVOS.includes(f.properties._fact) ? f.properties.km_geom || 0 : 0), 0);
   const tramos = subs.flatMap(s => s.tramos);
   const porCat = NUEVOS.map(k => [k, tramos.reduce((a, f) => a + (f.properties._fact === k ? f.properties.km_geom || 0 : 0), 0)]);
   const fila = (ico, nom, km) => `<div class="knFila">${ico}<span>${nom}</span><em>${fmt(km)} km</em></div>`;
-  return `<div id="kmNuevos" class="kpi"><b>${fmt(kmNuevo(tramos))} km</b>
-    <span>de ejes nuevos (factibilidad Alta, Media y Baja)${d.partes ? " · sistemas prendidos" : ""}</span>
-    <div class="knLista">${porCat.map(([k, km]) => fila(`<i style="background:${colorFact(k)}"></i>`, k, km)).join("")}</div>
+  const kmN = kmNuevo(tramos);
+  return `<div id="kmNuevos" class="kpi"><div class="knCab"><b>${fmt(kmN)} km</b>
+      <span class="knCosto" title="${fmt(kmN)} km × $${COSTO_KM_MM} millones por km">${fmtCosto(kmN)}<small>costo estimado ($${COSTO_KM_MM} millones/km)</small></span></div>
+    <span>de tramos nuevos</span>
+    <div class="knLista"><div class="knSub">Tramos nuevos según factibilidad</div>${porCat.map(([k, km]) => fila(`<i style="background:${colorFact(k)}"></i>`, k, km)).join("")}</div>
     ${d.partes && subs.length > 1 ? `<div class="knLista">${subs.map(s => fila("<i></i>", esc(s.nombre),
       kmNuevo(s.tramos))).join("")}</div>` : ""}</div>`;
 }
