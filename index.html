@@ -257,6 +257,12 @@
   /* va dentro de los controles de abajo a la izquierda del mapa: se apila con el perfil de elevación, sin superponerse */
   #factLey { width: 360px; padding: 14px 16px 12px; box-shadow: 0 2px 14px rgba(0,0,0,.2); margin: 0 0 12px 12px; }
   #factLey[hidden] { display: none; }
+  #factLey.plegado { width: auto; padding: 8px 10px 8px 14px; }
+  #factLey.plegado .factCuerpo { display: none; }
+  #factLey.plegado .factCab > span b { display: inline; font-size: 13px; color: var(--ink); font-weight: 600; }
+  #factLey .plegar { flex: none; width: 28px; height: 26px; border: 1px solid #c9c7c0; background: #fff; border-radius: 6px;
+    font-size: 14px; line-height: 1; color: var(--ink); cursor: pointer; }
+  #factLey .plegar:hover { background: #f0efec; border-color: #9c9a93; }
   #factLey .factCab { display: flex; align-items: center; gap: 8px; min-height: 26px; }
   #factLey .factCab > span { flex: 1; font-size: 13px; color: var(--ink-2); }
   #factLey .verTodas { flex: none; border: 1px solid #c9c7c0; background: #fff; border-radius: 13px; padding: 3px 11px;
@@ -297,6 +303,9 @@
   #kmNuevos .knFila i { width: 18px; height: 6px; border-radius: 3px; flex: none; }
   #kmNuevos .knFila span { flex: 1; display: inline; font-size: 12.5px; color: var(--ink); }
   #kmNuevos .knFila em { font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .lPunto { cursor: pointer; align-items: center; }
+  .lPunto input { margin: 0; }
+  .lPunto svg { margin-left: -6px; }
   .lEmplaz { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--line); }
   .lEmplaz label.ley { cursor: pointer; align-items: flex-start; }
   .lEmplaz input { margin: 2px 2px 0 0; }
@@ -1190,7 +1199,7 @@ const DETALLE = [   // cod = subcarpeta de factibilidad_sistemas; sistema = nomb
   // vista combinada: junta los sistemas de "partes" en un mismo mapa (cod NSVM se mantiene por los enlaces ya compartidos)
   { cod: "NSVM", nombre: "Sistemas consolidados", partes: ["NS", "VM", "Bonilla"] },
 ];
-const FACT = [["Existente", "#2a78d6"], ["En diseño", "#b48ee6"], ["Alta", "#0ca30c"], ["Media", "#fab219"], ["Baja", "#d03b3b"], ["Par vial", "#d4148c"]];
+const FACT = [["Existente", "#2a78d6"], ["En diseño", "#b48ee6"], ["Alta", "#0ca30c"], ["Media", "#f2cd0f"], ["Baja", "#d03b3b"], ["Par vial", "#d4148c"]];
 const FACT_OTRO = "#a8a7a0", ROJO_CONF = "#d7191c";
 // Qué implica cada nivel de factibilidad (se muestra al hacer clic en la categoría del recuadro de km)
 const DEF_FACT = {
@@ -1204,6 +1213,8 @@ const FT = REF.fact_tramos || VACIO, FC = REF.fact_conflictos || VACIO, FP = REF
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const linkSeguro = u => typeof u === "string" && /^https:\/\//.test(u.trim()) ? u.trim() : null;
 let vista = "red", factSel = null;
+// recuadro de km por factibilidad: parte plegado en pantallas chicas para no tapar el mapa
+let factPlegado = innerWidth < 1100 || innerHeight < 760;
 
 // Orden de norte a sur: proyección sobre la dirección principal de los tramos del sistema.
 // Recorrido tipo "línea de metro": cada calle (eje del código del tramo) es una línea; sus tramos van de norte a sur
@@ -1276,7 +1287,7 @@ DETALLE.filter(d => d.partes).forEach(d => {
 // Emplazamiento (trazado completo del KMZ) de un sistema: REF.emplaz_<cod>; sólo en la pestaña de ese sistema
 DETALLE.filter(d => !d.partes && REF["emplaz_" + d.cod]).forEach(d =>
   d.emplaz = REF["emplaz_" + d.cod].features.map(f => ({ ...f, properties: { ...f.properties, sistema: d.cod } })));
-let verEmplaz = true, verTramosSis = true;   // capas del sistema que se prenden/apagan (pestañas con emplazamiento)
+let verEmplaz = true, verTramosSis = true, verConf = true, verPerf = true;   // capas del sistema que se prenden/apagan (pestañas con emplazamiento)
 const detActual = () => DETALLE.find(x => x.cod === vista);
 const sisApagados = new Set();   // vista combinada: sistemas apagados con su interruptor
 const subsDe = d => d.subs ? d.subs.filter(s => !sisApagados.has(s.cod)) : [d];
@@ -1291,7 +1302,8 @@ function filtrarDet(d) {
 
 // Pestañas (sobre el mapa)
 document.getElementById("vistas").innerHTML = `<button data-v="red" role="tab">Red Sistemas</button>` +
-  DETALLE.map(d => `<button data-v="${d.cod}" role="tab">${d.partes ? "" : "Sistema "}${esc(d.nombre)}</button>`).join("");
+  DETALLE.map(d => `<button data-v="${d.cod}" role="tab" title="${d.partes ? "" : "Sistema "}${esc(d.nombre)}">${   // nombre corto: "S. Norte Sur"
+    d.partes ? "S. " + esc(d.nombre.replace(/^Sistemas\s+/i, "").replace(/^./, c => c.toUpperCase())) : "S. " + esc(d.nombre)}</button>`).join("");
 document.querySelectorAll("#vistas button").forEach(b => b.onclick = () => {
   vista = b.dataset.v; factSel = null;
   history.replaceState(null, "", vista === "red" ? location.pathname + location.search : "#" + vista);
@@ -1342,6 +1354,8 @@ function aplicarVista(encuadrar) {
   CAPAS_RED.forEach(id => vis(id, false));
   filtrarDet(d);
   CAPAS_DET.forEach(id => vis(id, true));
+  if (!verConf) ["det-conf", "det-conf-n"].forEach(id => vis(id, false));
+  if (!verPerf) ["det-perf", "det-perf-n"].forEach(id => vis(id, false));
   if (map.getLayer("det-emplaz")) {
     ["det-emplaz", "det-emplaz-casing"].forEach(id => {
       map.setFilter(id, ["==", ["get", "sistema"], d.emplaz ? d.cod : ""]); vis(id, !!d.emplaz && verEmplaz);
@@ -1369,9 +1383,10 @@ function leyendaSis(d) {
   document.getElementById("leySis").innerHTML = d.tramos.length ?
     `<p class="ayuda" style="margin:2px 0 4px">Tramos de los ejes según factibilidad</p>` +
     cats.map(([k, c]) => item(linea(c), esc(k))).join("") +
-    item(circulo(ROJO_CONF, "1"), "Punto de conflicto", "Numerado en el orden del recorrido de norte a sur" +
-      (d.partes ? " (cada sistema por separado)" : "")) +
-    item(circulo("#111", "01"), "Pin de perfil de calle", "Clic para abrir los perfiles existente y proyectado en Streetmix") +
+    `<label class="ley lPunto"><input type="checkbox" id="cConf" ${verConf ? "checked" : ""}>${circulo(ROJO_CONF, "1")}
+      <div><b>Punto de conflicto</b></div></label>
+    <label class="ley lPunto"><input type="checkbox" id="cPerf" ${verPerf ? "checked" : ""}>${circulo("#111", "01")}
+      <div><b>Pin de perfil de calle</b></div></label>` +
     (d.emplaz ? `<div class="lEmplaz"><p class="ayuda" style="margin:0 0 2px">Capas del sistema (mismos colores de
       factibilidad, distinta geometría)</p>
       <label class="ley"><input type="checkbox" id="cTramosSis" ${verTramosSis ? "checked" : ""}><div><b>Sistema
@@ -1379,6 +1394,12 @@ function leyendaSis(d) {
       <label class="ley"><input type="checkbox" id="cEmplaz" ${verEmplaz ? "checked" : ""}><div><b>Emplazamiento</b>
         <span class="def">Trazado completo del sistema (KMZ)</span></div></label></div>` : "") :
     `<p class="ayuda">Este sistema aún no tiene análisis de factibilidad.</p>`;
+  document.getElementById("cConf")?.addEventListener("change", e => {
+    verConf = e.target.checked; ["det-conf", "det-conf-n"].forEach(id => vis(id, verConf));
+  });
+  document.getElementById("cPerf")?.addEventListener("change", e => {
+    verPerf = e.target.checked; ["det-perf", "det-perf-n"].forEach(id => vis(id, verPerf));
+  });
   document.getElementById("cEmplaz")?.addEventListener("change", e => {
     verEmplaz = e.target.checked; ["det-emplaz", "det-emplaz-casing"].forEach(id => vis(id, verEmplaz));
   });
@@ -1405,15 +1426,20 @@ function renderSis(d) {
   // km por factibilidad: recuadro fijo sobre el mapa (esquina inferior izquierda)
   const ley = document.getElementById("factLey");
   ley.classList.toggle("conSel", !!factSel);
-  ley.innerHTML = `<div class="factCab"><span>Km por factibilidad · ${factSel ? "mostrando sólo una categoría" :
-      "clic para destacar en el mapa"}</span>${factSel ? `<button class="verTodas" title="Quitar la selección (Esc)">✕ Ver todas</button>` : ""}</div>
-    <div class="barraTipos">${cats.map(k => `<div data-f="${esc(k)}" style="flex:${km[k]};background:${colorFact(k)}"
+  ley.classList.toggle("plegado", factPlegado);
+  ley.innerHTML = `<div class="factCab"><span>${factPlegado ? `Km por factibilidad · <b>${fmt(total)} km</b>` :
+      `Km por factibilidad · ${factSel ? "mostrando sólo una categoría" : "clic para destacar en el mapa"}`}</span>${
+      factSel && !factPlegado ? `<button class="verTodas" title="Quitar la selección (Esc)">✕ Ver todas</button>` : ""}<button
+      class="plegar" aria-expanded="${!factPlegado}" title="${factPlegado ? "Desplegar" : "Esconder"} el recuadro">${
+      factPlegado ? "▴" : "▾"}</button></div>
+    <div class="factCuerpo"><div class="barraTipos">${cats.map(k => `<div data-f="${esc(k)}" style="flex:${km[k]};background:${colorFact(k)}"
       title="${esc(k)}: ${fmt(km[k])} km"></div>`).join("")}</div>
     ${cats.map(k => `<button class="filaFact" data-f="${esc(k)}" aria-pressed="${factSel === k}"
       title="${factSel === k ? "Clic para quitar la selección" : "Clic para destacar en el mapa"}"><i style="background:${
       colorFact(k)}"></i><span>${esc(k)}${FACT.some(x => x[0] === k) ? "" : " <em>(categoría no estándar)</em>"}</span>
       <b>${fmt(km[k])} km</b><small>${pct(k)} %</small><u aria-hidden="true">✕</u></button>${factSel === k && DEF_FACT[k] ?
-      `<p class="defFact" style="--c:${colorFact(k)}">${esc(DEF_FACT[k])}</p>` : ""}`).join("")}`;
+      `<p class="defFact" style="--c:${colorFact(k)}">${esc(DEF_FACT[k])}</p>` : ""}`).join("")}</div>`;
+  ley.querySelector(".plegar").onclick = () => { factPlegado = !factPlegado; renderSis(d); };
   ley.querySelectorAll(".filaFact, .barraTipos div").forEach(b => b.onclick = () =>
     elegirFact(factSel === b.dataset.f ? null : b.dataset.f));
   ley.querySelector(".verTodas")?.addEventListener("click", () => elegirFact(null));
