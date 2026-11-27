@@ -1294,7 +1294,7 @@ DETALLE.filter(d => d.partes).forEach(d => {
 // Emplazamiento (trazado completo del KMZ) de un sistema: REF.emplaz_<cod>; sólo en la pestaña de ese sistema
 DETALLE.filter(d => !d.partes && REF["emplaz_" + d.cod]).forEach(d =>
   d.emplaz = REF["emplaz_" + d.cod].features.map(f => ({ ...f, properties: { ...f.properties, sistema: d.cod } })));
-let verEmplaz = true, verTramosSis = true, verConf = true, verPerf = true;   // capas del sistema que se prenden/apagan (pestañas con emplazamiento)
+let verEmplaz = false, verTramosSis = true, verConf = true, verPerf = true;   // capas del sistema que se prenden/apagan (pestañas con emplazamiento)
 const detActual = () => DETALLE.find(x => x.cod === vista);
 const sisApagados = new Set();   // vista combinada: sistemas apagados con su interruptor
 const subsDe = d => d.subs ? d.subs.filter(s => !sisApagados.has(s.cod)) : [d];
