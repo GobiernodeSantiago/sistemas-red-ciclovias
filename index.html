@@ -6,8 +6,8 @@
 <title>Análisis de factibilidad de ejes priorizados</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="data/datos.js?v=202611271042"></script>
-<script src="data/capas.js?v=202611271042"></script>
+<script src="data/datos.js?v=202611271048"></script>
+<script src="data/capas.js?v=202611271048"></script>
 <script src="config.js"></script>
 <script src="config.local.js"></script><!-- claves privadas: sólo existe en el computador local, no se publica -->
 <style>
@@ -598,6 +598,9 @@ const CAPAS_REF = [
       ["Categoría vial", p.CateVial], ["Sentido de tránsito", p.SentTransi], ["N° pistas", p.NPistas], ["Largo", km2(p.km_geom)]]] },
   { id: "mapocho", fuente: "mapocho", grupo: "Ejes GORE por ejecutar", nombre: "Mapocho Pedaleable", color: MORADO_GORE, ancho: 4,
     popup: p => ["Mapocho Pedaleable", [["Capa", "Eje GORE"], ["Largo", km2(p.km_geom)]]] },
+  { id: "accesos-mapocho", fuente: "accesos_mapocho", grupo: "Ejes GORE por ejecutar", nombre: "Accesos Mapocho Pedaleable",
+    tipo: "circle", radio: 6, color: MORADO_GORE,
+    popup: p => ["Acceso Mapocho Pedaleable" + (p.id != null ? " " + p.id : ""), [["Capa", "Eje GORE"]]] },
   { id: "alameda-t3", fuente: "alameda_t3", grupo: "Ejes GORE por ejecutar", nombre: "Alameda Tramo 3", color: MORADO_GORE, ancho: 4,
     popup: p => [p.EJE_VIA || "Alameda Tramo 3", [["Capa", "Eje GORE"], ["Comuna", p.COMUNA], ["Tramo", unir(p.INICIO, p.FIN)],
       ["Operación", p.CARAC_FUNC], ["Etapa", p.ETAPA_DET], ["Cartera", p.CARTERA], ["Normativa", p.NORMATIVA], ["Largo", km2(p.km_geom)]]] },

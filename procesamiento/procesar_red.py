@@ -65,6 +65,7 @@ CAPAS_REFERENCIA = [
     {"id": "alameda_t3", "archivo": ENTRADA / "Alameda_tramo3.geojson",
      "campos": ["EJE_VIA", "COMUNA", "INICIO", "FIN", "CARAC_FUNC", "ETAPA_DET", "CARTERA", "NORMATIVA"]},
     {"id": "mapocho", "archivo": ENTRADA / "Mapocho_pedaleable.geojson", "campos": []},
+    {"id": "accesos_mapocho", "archivo": ENTRADA / "accesos_mapocho.geojson", "campos": ["id"]},
     {"id": "ferias", "archivo": ENTRADA / "ferias_libres_persas_RM.geojson", "derivar": lambda g: derivar_ferias(g),
      "campos": ["nombre", "comuna", "tipo", "diasTexto", "horario", "ubic", "puestos", "relCiclovia"]},
     {"id": "pasos", "archivo": ENTRADA / "Pasos_bajo_sobre_nivel_tuneles.geojson", "derivar": lambda g: derivar_pasos(g),

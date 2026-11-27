@@ -30,7 +30,7 @@ fragmentos de red que se unen y brechas de conexión.
 3. Abrir `index.html` para revisar y volver a subir `data/datos.js` a GitHub.
 
 Capas de referencia (PMC, factibilidad EVA, ciclovías proyectadas, La Chimba, Alameda T3, Mapocho
-Pedaleable, ferias, pasos a desnivel, paraderos, siniestros): se definen en `CAPAS_REFERENCIA` del
+Pedaleable y sus accesos, ferias, pasos a desnivel, paraderos, siniestros): se definen en `CAPAS_REFERENCIA` del
 script (ruta y campos a exportar) y su estilo/popup en `CAPAS_REF` de `index.html`.
 
 ## Análisis de factibilidad por sistema (pestañas sobre el mapa)
