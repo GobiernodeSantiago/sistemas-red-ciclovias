@@ -551,7 +551,7 @@ const km2 = x => x == null || x === "" ? null : fmt(x, 2) + " km";
 const unir = (...a) => a.filter(x => x && x !== "s_i" && x !== "S_I" && x !== "?").join(" → ");
 const MORADO_GORE = "#5e3c6e";   // color común de los Ejes GORE (ciruela oscuro, distinto del lila de "Con/En diseño")
 // red existente: mismo azul y grosor que "Existente" en la factibilidad de los sistemas (mapas claros / oscuros)
-const AZUL_EXISTENTES = "#2a78d6", AZUL_EXISTENTES_OSCURO = "#5c9be6", ANCHO_EXISTENTES = 5;
+const AZUL_EXISTENTES = "#2a78d6", AZUL_EXISTENTES_OSCURO = "#5c9be6", ANCHO_EXISTENTES = 4;
 // Cada capa: fuente (id en capas.js), grupo del panel, tipo (line|circle|square), color (fijo o por categoría), popup
 const CAPAS_REF = [
   { id: "osm", fuente: "osm", grupo: "Análisis de red", nombre: "Ciclovías existentes (OSM)",
